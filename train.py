@@ -9,7 +9,7 @@ from data.dataset import RegionDataset
 import torch
 from torch.utils.data import DataLoader
 from torch import nn
-    
+
 def train(dataloader, model_config, batch_size=1,input_size=2, hidden_units=40):
     """
         input_size: number of features
@@ -19,7 +19,6 @@ def train(dataloader, model_config, batch_size=1,input_size=2, hidden_units=40):
     model = HybridModel(model_config, batch_size=batch_size).float()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    size = len(dataloader.dataset)
     for t in range(200):
         for batch, (X, y) in enumerate(dataloader):
             # Compute prediction error
@@ -40,7 +39,6 @@ def main():
     model_config_dir = 'model/config/region_1_config.json'
     with open(model_config_dir, "r") as json_config:
         model_config = json.load(json_config)
-    # print(model_config)
     dataset = RegionDataset(root_dir)
     batch_size = 1
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)

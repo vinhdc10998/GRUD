@@ -21,18 +21,22 @@ class HybridModel(nn.Module):
 
     def forward(self, input_):
         number_of_variants = input_.size()[1]
+        
         #Higher Model
-        # init_hidden_higher = self.higherModel.init_hidden(number_of_variants)
-        # logits_higher, _ = self.higherModel(input_, init_hidden_higher.data)
+        init_hidden_higher = self.higherModel.init_hidden(number_of_variants)
+        logits_higher, _ = self.higherModel(input_, init_hidden_higher.data)
 
         #Lower Model
         init_hidden_lower = self.lowerModel.init_hidden(number_of_variants)
         logits_lower, _ = self.lowerModel(input_, init_hidden_lower.data)
 
+        #concatenate 2 Lower and Higher models
+        logits = torch.cat((logits_lower, logits_higher), dim=2)
+
         logit_list = []
         num_classes = self.num_classes
-        for i, input_ in enumerate(logits_higher):
-            c = torch.rand((num_classes, num_classes), requires_grad=True)
+        for i, input_ in enumerate(logits):
+            c = torch.rand((num_classes*2, num_classes), requires_grad=True)
             d = torch.rand((num_classes), requires_grad=True)
             logit = torch.matmul(input_, c) + d
             logit_list.append(logit)
