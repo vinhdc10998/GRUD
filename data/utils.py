@@ -80,7 +80,6 @@ def load_lines(filename,header=False):
     header_line = None
     lines = []
     with reading(filename) as fp:
-        line_count = 0
         if header:
             header_line = fp.readline().rstrip()
         for line in fp:
@@ -177,19 +176,18 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
     legend_lines_split = np.array([(line.split()) for line in legend_lines])
     del legend_lines
     label_fw = []
-
+    a1_freq_list = []
     for key in label_info_dict.keys():
         position = label_info_dict[key].position
         a1_freq = label_info_dict[key].a1_freq
-        
         check_array = legend_positions_list == int(position)
         if np.sum(check_array) == 1:
             list_allel_one_hot = []
             for allele in hap_lines_split[check_array].astype(int)[0]:
                 list_allel_one_hot.append(one_hot(allele, a1_freq)) 
             label_fw.append(list_allel_one_hot)
+            a1_freq_list.append(a1_freq)
         else:
-            id_region = label_info_dict[key].id.split(":")
             a0, a1 = label_info_dict[key].a0, label_info_dict[key].a1
             ids = legend_lines_split[check_array][:, 0]
             for index, id in enumerate(ids):
@@ -199,6 +197,10 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
                     for allele in hap_lines_split[check_array].astype(int)[0]:
                         list_allel_one_hot.append(one_hot(allele, a1_freq))  
                     label_fw.append(list_allel_one_hot)
+                    a1_freq_list.append(a1_freq)
 
-    label_haplotype_list = np.array(label_fw).reshape(-1,label_site_count,2)
-    return np.array(haplotype_list, dtype=np.double), np.array(label_haplotype_list, dtype=np.double)
+
+    label_haplotype_list = np.array(label_fw, dtype=np.double).reshape(-1,label_site_count,2)
+    haplotype_list = np.array(haplotype_list, dtype=np.double)
+    a1_freq_list = np.array(a1_freq_list, dtype=np.double)
+    return haplotype_list, label_haplotype_list, a1_freq_list

@@ -1,25 +1,31 @@
-import os
-import sys
-sys.path.append("data")
-sys.path.append("model")
-
 import json
-from model.HybridModel import HybridModel
-from data.dataset import RegionDataset
 import torch
+
+from model.hybrid_model import HybridModel
+from model.custom_cross_entropy import CustomCrossEntropy
+from data.dataset import RegionDataset
+
 from torch.utils.data import DataLoader
 from torch import nn
 
-def train(dataloader, model_config, batch_size=1,input_size=2, hidden_units=40):
-    """
-        input_size: number of features
-        batch_size: number of samples
-    """
+BATCH_SIZE = 1
+EPOCHS = 200
 
+def evaluation(prediction, label):
+    #TODO
+    '''
+        Evaluate model with R square score
+    '''
+    score = None
+    return score
+
+def train(dataloader, a1_freq_list, model_config, batch_size=1, epochs=200, gramma=0):
     model = HybridModel(model_config, batch_size=batch_size).float()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    for t in range(200):
+
+    a1_freq_list = torch.tensor(a1_freq_list)
+    for t in range(epochs):
         for batch, (X, y) in enumerate(dataloader):
             # Compute prediction error
             prediction = model(X.float())          
@@ -37,11 +43,13 @@ def train(dataloader, model_config, batch_size=1,input_size=2, hidden_units=40):
 def main():
     root_dir = 'data/org_data'
     model_config_dir = 'model/config/region_1_config.json'
+
     with open(model_config_dir, "r") as json_config:
         model_config = json.load(json_config)
     dataset = RegionDataset(root_dir)
-    batch_size = 1
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    train(dataloader, model_config, batch_size)
+
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train(dataloader, dataset.a1_freq_list, model_config, BATCH_SIZE, EPOCHS)
+
 if __name__ == "__main__":
     main()

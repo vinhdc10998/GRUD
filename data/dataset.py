@@ -1,10 +1,7 @@
 from __future__ import print_function, division
 import os
-from utils import load_site_info, load_data
-import numpy as np
-
-import torch
-from torch.utils.data import Dataset, DataLoader
+from .utils import load_site_info, load_data
+from torch.utils.data import Dataset
 
 
 class RegionDataset(Dataset):
@@ -16,8 +13,10 @@ class RegionDataset(Dataset):
         panel_dir = os.path.join(root_dir, 'region_1.legend.gz')
 
         self.site_info_list = load_site_info(panel_dir)
-        self.haplotype_list, self.label_haplotype_list = load_data(hap_dir, legend_dir, label_hap_dir, label_legend_dir, self.site_info_list)
-        print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape)
+        self.haplotype_list, self.label_haplotype_list, self.a1_freq_list =\
+            load_data(hap_dir, legend_dir, label_hap_dir, label_legend_dir, self.site_info_list)
+
+        print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape, self.a1_freq_list.shape)
     def __len__(self):
         return len(self.haplotype_list)
     

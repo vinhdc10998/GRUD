@@ -1,8 +1,7 @@
-import numpy as np
 import torch 
 from torch import nn 
-from HigherModel import HigherModel
-from LowerModel import LowerModel
+from .higher_model import HigherModel
+from .lower_model import LowerModel
 
 class HybridModel(nn.Module):
     def __init__(self,model_config, batch_size=1, bidir=True):
@@ -33,9 +32,9 @@ class HybridModel(nn.Module):
         #concatenate 2 Lower and Higher models
         logits = torch.cat((logits_lower, logits_higher), dim=2)
 
-        logit_list = []
+        logit_list = [] 
         num_classes = self.num_classes
-        for i, input_ in enumerate(logits):
+        for input_ in logits:
             c = torch.rand((num_classes*2, num_classes), requires_grad=True)
             d = torch.rand((num_classes), requires_grad=True)
             logit = torch.matmul(input_, c) + d
@@ -46,5 +45,3 @@ class HybridModel(nn.Module):
                 shape=[-1, self.num_outputs, num_classes])
 
         return predictions
-
-
