@@ -19,9 +19,9 @@ def evaluation(prediction, label):
     score = None
     return score
 
-def train(dataloader, a1_freq_list, model_config, batch_size=1, epochs=200, gramma=0):
+def train(dataloader, a1_freq_list, model_config, batch_size=1, epochs=200):
     model = HybridModel(model_config, batch_size=batch_size).float()
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = model.CrossEntropy
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     a1_freq_list = torch.tensor(a1_freq_list)
@@ -29,7 +29,7 @@ def train(dataloader, a1_freq_list, model_config, batch_size=1, epochs=200, gram
         for batch, (X, y) in enumerate(dataloader):
             # Compute prediction error
             prediction = model(X.float())          
-            loss = loss_fn(prediction[0,:].float(), y[0,:,1].long())
+            loss = loss_fn(prediction[0,:].float(), y[0,:,1].long(), a1_freq_list)
 
             # Backpropagation
             optimizer.zero_grad()
