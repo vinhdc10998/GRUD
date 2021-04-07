@@ -184,7 +184,7 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
         if np.sum(check_array) == 1:
             list_allel_one_hot = []
             for allele in hap_lines_split[check_array].astype(int)[0]:
-                list_allel_one_hot.append(one_hot(allele, a1_freq)) 
+                list_allel_one_hot.append(one_hot(allele, a1_freq))
             label_fw.append(list_allel_one_hot)
             a1_freq_list.append(a1_freq)
         else:
