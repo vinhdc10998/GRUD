@@ -7,7 +7,6 @@ certifi==2020.12.5
 cycler==0.10.0
 Cython==0.29.22
 dask==2021.3.0
-dataclasses==0.8
 decorator @ file:///home/ktietz/src/ci/decorator_1611930055503/work
 fasteners==0.16
 gast==0.2.2
