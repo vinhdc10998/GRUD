@@ -76,13 +76,13 @@ def main():
                         dest='chromosome', help='Chromosome')
     args = parser.parse_args()
 
-    
     root_dir = args.root_dir
     model_config_dir = args.model_config_dir
     batch_size = args.batch_size
     epochs = args.epochs
     chromosome = args.chromosome
     regions = args.regions.split("-")
+    
     if args.gpu == True:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         if device == 'cpu': print("You don't have GPU to impute genotype")
