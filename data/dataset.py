@@ -6,12 +6,12 @@ from torch.utils.data import Dataset
 
 
 class RegionDataset(Dataset):
-    def __init__(self, root_dir):
-        hap_dir = os.path.join(root_dir,'chr22_1.hap.gz')
-        legend_dir = os.path.join(root_dir,'chr22_1.legend.gz')
-        label_hap_dir = os.path.join(root_dir, 'chr22_true.hap.gz')
-        label_legend_dir = os.path.join(root_dir, 'chr22_true.legend.gz') 
-        panel_dir = os.path.join(root_dir, 'region_1.legend.gz')
+    def __init__(self, root_dir, region=1, chromosome='chr22'):
+        hap_dir = os.path.join(root_dir,f'{chromosome}_{region}.hap.gz')
+        legend_dir = os.path.join(root_dir,f'{chromosome}_{region}.legend.gz')
+        label_hap_dir = os.path.join(root_dir, f'{chromosome}_true.hap.gz')
+        label_legend_dir = os.path.join(root_dir, f'{chromosome}_true.legend.gz') 
+        panel_dir = os.path.join(root_dir, f'region_{region}.legend.gz')
 
         self.site_info_list = load_site_info(panel_dir)
         self.haplotype_list, self.label_haplotype_list, self.a1_freq_list =\
