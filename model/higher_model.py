@@ -3,7 +3,7 @@ from torch import nn
 from torch.autograd import Variable
 
 class HigherModel(nn.Module):
-    def __init__(self, model_config, batch_size=1, bidir=True):
+    def __init__(self, model_config, device, batch_size=1, bidir=True):
         super(HigherModel,self).__init__()
         self.input_dim = model_config['input_dim']
         self.hidden_units = model_config['num_units']
@@ -17,7 +17,7 @@ class HigherModel(nn.Module):
         self.bidir = bidir
         self.batch_size = batch_size
 
-        self.features_ = torch.zeros((self.num_inputs, 2, self.feature_size))
+        self.features_ = torch.zeros((self.num_inputs, 2, self.feature_size)).to(device)
         self.gru = nn.GRU(
             input_size = self.feature_size,
             hidden_size = self.hidden_units,

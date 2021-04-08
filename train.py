@@ -24,7 +24,7 @@ def evaluation(prediction, label):
 def train(dataloader, a1_freq_list, model_config, device,batch_size=1, epochs=200):
     a1_freq_list = torch.tensor(a1_freq_list.tolist()*batch_size)
     
-    model = HybridModel(model_config, a1_freq_list, batch_size=batch_size, mode='Higher').float().to(device)
+    model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, mode='Higher').float().to(device)
     # print(model)
     print(next(model.parameters()).device)
     loss_fn = model.CustomCrossEntropyLoss
