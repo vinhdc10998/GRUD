@@ -1,6 +1,9 @@
 import os
 import json
 import torch
+from tqdm import tqdm
+from time import sleep
+
 import matplotlib.pyplot as plt
 import numpy as np
 from argparse import ArgumentParser
@@ -25,7 +28,7 @@ def train(dataloader, a1_freq_list, model_config, args,batch_size=1, epochs=200)
         if device == 'cpu': 
             print("You don't have GPU to impute genotype")
         else:
-            print(f"You're using GPU {torch.cuda.get_device_name(0)}to impute genotype")
+            print(f"You're using GPU {torch.cuda.get_device_name(0)} to impute genotype")
     else: 
         device = 'cpu'
         print("You're using CPU to impute genotype")
@@ -40,25 +43,26 @@ def train(dataloader, a1_freq_list, model_config, args,batch_size=1, epochs=200)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.01)
 
     loss_values = []
-    for t in range(epochs):
-        for batch, (X, y) in enumerate(dataloader):
-            X, y = X.to(device), y.to(device)
+    for epoch in range(epochs):
+        with tqdm(dataloader, unit='batch') as tepoch: 
+            for (X, y) in tepoch:
+                tepoch.set_description(f"Epoch {epoch}")
+                X, y = X.to(device), y.to(device)
 
-            # Compute prediction error
-            prediction = model(X.float())
-            pred = torch.reshape(prediction,(-1,2))
-            label = torch.reshape(y[:,:,1], (y.shape[0]*y.shape[1],-1)).long()
-            loss = loss_fn(pred, label[:,0])
-            
-            # Backpropagation
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
-
-        loss = loss.item()
-        loss_values.append(loss)
-        print(f"[EPOCHS {t}]: loss: {loss:>7f}")
+                # Compute prediction error
+                prediction = model(X.float())
+                pred = torch.reshape(prediction,(-1,2))
+                label = torch.reshape(y[:,:,1], (y.shape[0]*y.shape[1],-1)).long()
+                loss = loss_fn(pred, label[:,0])
+                
+                # Backpropagation
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+                tepoch.set_postfix(loss=loss.item())
+                sleep(0.1)
+            loss_values.append(loss)
 
     plt.plot(np.array(loss_values), 'r')
     plt.savefig('loss.png')
