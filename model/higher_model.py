@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torch.autograd import Variable
 
 class HigherModel(nn.Module):
     def __init__(self, model_config, device, batch_size=1, bidir=True):

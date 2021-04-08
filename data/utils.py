@@ -6,6 +6,7 @@ import gzip
 import os
 import subprocess
 import numpy as np
+import sys
 
 def system(command):
     subprocess.call(command, shell=True)
@@ -198,7 +199,6 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
                         list_allel_one_hot.append(one_hot(allele, a1_freq))  
                     label_fw.append(list_allel_one_hot)
                     a1_freq_list.append(a1_freq)
-
 
     label_haplotype_list = np.array(label_fw, dtype=np.double).reshape(-1,label_site_count,2)
     haplotype_list = np.array(haplotype_list, dtype=np.double)
