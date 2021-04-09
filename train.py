@@ -1,16 +1,14 @@
 import os
 import json
 import torch
-from tqdm import tqdm
-from time import sleep
-
 import matplotlib.pyplot as plt
 import numpy as np
 from argparse import ArgumentParser
+from sklearn.metrics import r2_score
 
 from model.hybrid_model import HybridModel
 from data.dataset import RegionDataset
-
+from torch import nn
 from torch.utils.data import DataLoader
 torch.manual_seed(42)
 
@@ -22,7 +20,17 @@ def evaluation(prediction, label):
     score = None
     return score
 
-def train(dataloader, a1_freq_list, model_config, args,batch_size=1, epochs=200):
+def draw_chart(loss, r2_score, region):
+    fig, (ax1, ax2) = plt.subplots(2)
+    fig.suptitle(f'Region {region}')
+    ax1.set_title("Loss")
+    ax1.plot(loss)
+    ax2.set_title("R2 score")
+    ax2.plot(r2_score)
+    fig.tight_layout()
+    plt.savefig(f"images/region_{region}.png")
+
+def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epochs=200):
     if args.gpu == True:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         if device == 'cpu': 
@@ -37,36 +45,40 @@ def train(dataloader, a1_freq_list, model_config, args,batch_size=1, epochs=200)
     a1_freq_list = torch.tensor(a1_freq_list.tolist()*batch_size)
 
     model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, mode=model_type).float().to(device)
-    loss_fn = model.CustomCrossEntropyLoss
-    # loss_fn = nn.CrossEntropyLoss()
+    # loss_fn = model.CustomCrossEntropyLoss
+    loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.01)
 
+    _r2_score_list = []
     loss_values = []
-    for epoch in range(epochs):
-        with tqdm(dataloader, unit='batch') as tepoch: 
-            for (X, y) in tepoch:
-                tepoch.set_description(f"Epoch {epoch}")
-                X, y = X.to(device), y.to(device)
+    for t in range(epochs):
+        _r2_score = 0
+        for batch, (X, y) in enumerate(dataloader):
+            X, y = X.to(device), y.to(device)
 
-                # Compute prediction error
-                prediction = model(X.float())
-                pred = torch.reshape(prediction,(-1,2))
-                label = torch.reshape(y[:,:,1], (y.shape[0]*y.shape[1],-1)).long()
-                loss = loss_fn(pred, label[:,0])
-                
-                # Backpropagation
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
-                tepoch.set_postfix(loss=loss.item())
-                sleep(0.1)
-            loss_values.append(loss)
+            # Compute prediction error
+            prediction = model(X.float())
+            pred = torch.reshape(prediction,(-1,2))
+            label = torch.reshape(y, (-1,2)).long()
+            loss = loss_fn(pred, label[:,1])
+            _r2_score += r2_score(
+                torch.argmax(pred,dim=1).cpu().detach().numpy(),
+                label[:,1].cpu().detach().numpy()
+            )
 
-    plt.plot(np.array(loss_values), 'r')
-    plt.savefig('loss.png')
+            # Backpropagation
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+        _r2_score /= batch
+        loss = loss.item()
+        loss_values.append(loss)
+        _r2_score_list.append(_r2_score)
+        print(f"[EPOCHS {t}]: loss: {loss:>7f}, r2_score: {_r2_score:>7f}")
 
+    draw_chart(loss_values, _r2_score_list, region)
 
 def main():
     description = 'Genotype Imputation'
@@ -99,12 +111,20 @@ def main():
     regions = args.regions.split("-")
 
     for region in range(int(regions[0]), int(regions[-1])+1):
+        print(f"----------Training region {region}----------")
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
         dataset = RegionDataset(root_dir, region, chromosome)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-        train(dataloader, dataset.a1_freq_list, model_config, args, batch_size, epochs)
+        train(
+            dataloader,
+            dataset.a1_freq_list,
+            model_config,
+            args, region,
+            batch_size,
+            epochs
+        )
 
 if __name__ == "__main__":
     main()

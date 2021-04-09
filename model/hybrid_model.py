@@ -18,7 +18,7 @@ class HybridModel(nn.Module):
         self.batch_size = batch_size
 
         if self.mode == 'Higher':
-            gramma = 0.05
+            gramma = 1
             self.higherModel = HigherModel(model_config, device, batch_size=self.batch_size, bidir=self.bidir)
         elif self.mode == 'Lower':
             gramma = -0.05
