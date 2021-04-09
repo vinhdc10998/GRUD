@@ -16,9 +16,10 @@ class HigherModel(nn.Module):
         self.bidir = bidir
         self.batch_size = batch_size
 
-        self.features_ = torch.zeros((self.num_inputs, 2, self.feature_size)).to(device)
+        self.features_1 = nn.Linear(self.input_dim, self.feature_size)
+        self.features_2 = nn.Linear(self.feature_size, self.feature_size*2)
         self.gru = nn.GRU(
-            input_size = self.input_dim,
+            input_size = self.feature_size*2,
             hidden_size = self.hidden_units,
             num_layers = self.num_layers,
             bidirectional = self.bidir)
@@ -37,11 +38,8 @@ class HigherModel(nn.Module):
             return logits_list(g)  in paper
         '''
         batch = input_.shape[0]
-        # gru_inputs = []
-        # for i in range(self.num_inputs):
-        #     gru_input = torch.matmul(input_[:,i], self.features_[i])
-        #     gru_inputs.append(gru_input)
-        # input_ = torch.reshape(torch.stack(gru_inputs),(batch, self.num_inputs,-1))
+        input_ = self.features_1(input_)
+        input_ = self.features_2(input_)
         logits, state = self.gru(input_, hidden)
         outputs_fw = logits[:,:, :self.hidden_units]
         outputs_bw = logits[:,:, self.hidden_units:]

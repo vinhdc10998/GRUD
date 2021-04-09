@@ -44,11 +44,12 @@ def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, ep
     lr = args.learning_rate
     a1_freq_list = torch.tensor(a1_freq_list.tolist()*batch_size)
 
+    #Init Model
     model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, mode=model_type).float().to(device)
     # loss_fn = model.CustomCrossEntropyLoss
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.01)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
 
     _r2_score_list = []
     loss_values = []
@@ -58,15 +59,13 @@ def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, ep
             X, y = X.to(device), y.to(device)
 
             # Compute prediction error
-            prediction = model(X.float())
-            pred = torch.reshape(prediction,(-1,2))
+            logits, prediction = model(X.float())
             label = torch.reshape(y, (-1,2)).long()
-            loss = loss_fn(pred, label[:,1])
+            loss = loss_fn(logits, label[:,1])
             _r2_score += r2_score(
-                torch.argmax(pred,dim=1).cpu().detach().numpy(),
+                torch.argmax(prediction,dim=1).cpu().detach().numpy(),
                 label[:,1].cpu().detach().numpy()
             )
-
             # Backpropagation
             optimizer.zero_grad()
             loss.backward()
@@ -76,7 +75,7 @@ def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, ep
         loss = loss.item()
         loss_values.append(loss)
         _r2_score_list.append(_r2_score)
-        print(f"[EPOCHS {t}]: loss: {loss:>7f}, r2_score: {_r2_score:>7f}")
+        print(f"[REGION {region} - EPOCHS {t+1}]: loss: {loss:>7f}, r2_score: {_r2_score:>7f}")
 
     draw_chart(loss_values, _r2_score_list, region)
 

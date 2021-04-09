@@ -29,6 +29,7 @@ class HybridModel(nn.Module):
             self.lowerModel = LowerModel(model_config, bidir=self.bidir)
 
         self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, gramma=gramma)
+        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, input_):
         number_of_variants = input_.size()[1]
@@ -38,9 +39,9 @@ class HybridModel(nn.Module):
         if self.mode == 'Higher':
             init_hidden_higher = self.higherModel.init_hidden(number_of_variants)
             logits, _ = self.higherModel(input_, init_hidden_higher.data)
-            return torch.reshape(
-                logits,
-                shape=[-1, self.num_outputs, num_classes])
+            logit = torch.reshape(logits, shape=[-1, num_classes]) #pre-softmax
+            pred = torch.reshape(self.softmax(logits), shape=[-1, num_classes]) #softmax
+            return logit, pred
 
         #Lower Model
         elif self.mode == 'Lower':
