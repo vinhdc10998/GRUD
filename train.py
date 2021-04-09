@@ -10,12 +10,13 @@ from torch import nn
 from torch.utils.data import DataLoader
 torch.manual_seed(42)
 
-def evaluation(dataloader, model, device, loss_fn):
+def evaluation(dataloader, model, device, loss_fn, is_train=True):
     #TODO
     '''
         Evaluate model with R square score
     '''
-    model.eval()
+    if not is_train:
+        model.eval()
     _r2_score = 0
     test_loss = 0
     with torch.no_grad():
@@ -81,6 +82,7 @@ def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, ep
     for t in range(epochs):
         _r2_score = 0
         train_loss = 0
+        model.train()
         for batch, (X, y) in enumerate(train_loader):
             X, y = X.to(device), y.to(device)
             label = torch.reshape(y, (-1,2)).long()
