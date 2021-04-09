@@ -17,8 +17,7 @@ class HigherModel(nn.Module):
         self.batch_size = batch_size
 
         self.features_1 = nn.Linear(self.input_dim, self.feature_size)
-        self.features_2 = nn.Linear(self.feature_size, self.feature_size*2)
-        self.features_3 = nn.Linear(self.feature_size*2, self.feature_size*4)
+        self.features_2 = nn.Linear(self.feature_size, self.feature_size*4)
         self.gru = nn.GRU(
             input_size = self.feature_size*4,
             hidden_size = self.hidden_units,
@@ -41,7 +40,6 @@ class HigherModel(nn.Module):
         batch = input_.shape[0]
         input_ = self.features_1(input_)
         input_ = self.features_2(input_)
-        input_ = self.features_3(input_)
         logits, state = self.gru(input_, hidden)
         outputs_fw = logits[:,:, :self.hidden_units]
         outputs_bw = logits[:,:, self.hidden_units:]

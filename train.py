@@ -10,6 +10,20 @@ from torch import nn
 from torch.utils.data import DataLoader
 torch.manual_seed(42)
 
+def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
+    fig, axs = plt.subplots(2, 2)
+    fig.suptitle(f'Region {region}')
+    axs[0,0].set_title("Training Loss")
+    axs[0,0].plot(train_loss)
+    axs[1,0].set_title("Training R2 score")
+    axs[1,0].plot(train_r2_score)
+    axs[0,1].set_title("Validation Loss")
+    axs[0,1].plot(val_loss)
+    axs[1,1].set_title("Validation R2 score")
+    axs[1,1].plot(val_r2_score)
+    fig.tight_layout()
+    plt.savefig(f"images/region_{region}.png")
+
 def evaluation(dataloader, model, device, loss_fn, is_train=True):
     #TODO
     '''
@@ -37,22 +51,34 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     _r2_score /= batch+1
     return test_loss, _r2_score
 
+def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=True):
+    if is_train:
+        model.train()
+    _r2_score = 0
+    train_loss = 0
+    for batch, (X, y) in enumerate(dataloader):
+        X, y = X.to(device), y.to(device)
+        label = torch.reshape(y, (-1,2)).long()
 
-def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
-    fig, axs = plt.subplots(2, 2)
-    fig.suptitle(f'Region {region}')
-    axs[0,0].set_title("Training Loss")
-    axs[0,0].plot(train_loss)
-    axs[1,0].set_title("Training R2 score")
-    axs[1,0].plot(train_r2_score)
-    axs[0,1].set_title("Validation Loss")
-    axs[0,1].plot(val_loss)
-    axs[1,1].set_title("Validation R2 score")
-    axs[1,1].plot(val_r2_score)
-    fig.tight_layout()
-    plt.savefig(f"images/region_{region}.png")
+        # Compute prediction error
+        logits, prediction = model(X.float())
+        loss = loss_fn(logits, label[:,1])
+        _r2_score += r2_score(
+            torch.argmax(prediction,dim=1).cpu().detach().numpy(),
+            label[:,1].cpu().detach().numpy()
+        )
+        train_loss += loss.item()
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
 
-def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epochs=200):
+    _r2_score /= batch+1
+    train_loss /= batch+1
+    return train_loss, _r2_score
+
+def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epochs=200):
     if args.gpu == True:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         if device == 'cpu': 
@@ -67,6 +93,7 @@ def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, ep
     a1_freq_list = torch.tensor(a1_freq_list.tolist()*batch_size)
     train_loader = dataloader['train']
     val_loader = dataloader['validation']
+
     #Init Model
     model = HybridModel(model_config, a1_freq_list, batch_size=batch_size, mode=model_type).float().to(device)
     def count_parameters(model):
@@ -80,37 +107,13 @@ def train(dataloader, a1_freq_list, model_config, args, region, batch_size=1, ep
     _r2_score_list, loss_values = [], [] #train
     r2_test_list, test_loss_list = [], [] #validation
     for t in range(epochs):
-        _r2_score = 0
-        train_loss = 0
-        model.train()
-        for batch, (X, y) in enumerate(train_loader):
-            X, y = X.to(device), y.to(device)
-            label = torch.reshape(y, (-1,2)).long()
-
-            # Compute prediction error
-            logits, prediction = model(X.float())
-            loss = loss_fn(logits, label[:,1])
-            _r2_score += r2_score(
-                torch.argmax(prediction,dim=1).cpu().detach().numpy(),
-                label[:,1].cpu().detach().numpy()
-            )
-            train_loss += loss.item()
-            # Backpropagation
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
-
-        _r2_score /= batch+1
-        train_loss /= batch+1
+        train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
         test_loss, r2_test = evaluation(val_loader, model, device, loss_fn)
-
-        loss_values.append(loss)
-        _r2_score_list.append(_r2_score)
-
+        loss_values.append(train_loss)
+        _r2_score_list.append(r2_train)
         test_loss_list.append(test_loss)
         r2_test_list.append(r2_test)
-        print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {_r2_score:>7f}, test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")
+        print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")
 
     draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region)
 
@@ -157,7 +160,7 @@ def main():
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
         val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
         dataloader = {'train': train_loader, 'validation': val_loader}
-        train(
+        run(
             dataloader,
             dataset.a1_freq_list,
             model_config,
