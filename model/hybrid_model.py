@@ -6,7 +6,7 @@ from torch import nn
 
 MODEL_NAME = ['Hybrid', 'Higher', 'Lower']
 class HybridModel(nn.Module):
-    def __init__(self,model_config, a1_freq_list, device,batch_size=1, bidir=True, mode=None):
+    def __init__(self,model_config, a1_freq_list, batch_size=1, bidir=True, mode=None):
         super(HybridModel,self).__init__()
         assert mode in MODEL_NAME
         self.input_size = model_config['input_dim']
@@ -19,7 +19,7 @@ class HybridModel(nn.Module):
 
         if self.mode == 'Higher':
             gramma = 1
-            self.higherModel = HigherModel(model_config, device, batch_size=self.batch_size, bidir=self.bidir)
+            self.higherModel = HigherModel(model_config, batch_size=self.batch_size, bidir=self.bidir)
         elif self.mode == 'Lower':
             gramma = -0.05
             self.lowerModel = LowerModel(model_config, bidir=self.bidir)

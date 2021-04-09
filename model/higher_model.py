@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 class HigherModel(nn.Module):
-    def __init__(self, model_config, device, batch_size=1, bidir=True):
+    def __init__(self, model_config, batch_size=1, bidir=True):
         super(HigherModel,self).__init__()
         self.input_dim = model_config['input_dim']
         self.hidden_units = model_config['num_units']
@@ -18,15 +18,16 @@ class HigherModel(nn.Module):
 
         self.features_1 = nn.Linear(self.input_dim, self.feature_size)
         self.features_2 = nn.Linear(self.feature_size, self.feature_size*2)
+        self.features_3 = nn.Linear(self.feature_size*2, self.feature_size*4)
         self.gru = nn.GRU(
-            input_size = self.feature_size*2,
+            input_size = self.feature_size*4,
             hidden_size = self.hidden_units,
             num_layers = self.num_layers,
             bidirectional = self.bidir)
         
         self.list_linear = []
         for (t_fw, t_bw) in (zip(self.output_points_fw, self.output_points_bw)):
-            if t_fw is not None and t_bw is not None:
+            if (t_fw is not None) and (t_bw is not None):
                 self.list_linear.append(nn.Linear(self.hidden_units*2, self.num_classes, bias=True)) 
             else:
                 self.list_linear.append(nn.Linear(self.hidden_units, self.num_classes, bias=True))
@@ -40,6 +41,7 @@ class HigherModel(nn.Module):
         batch = input_.shape[0]
         input_ = self.features_1(input_)
         input_ = self.features_2(input_)
+        input_ = self.features_3(input_)
         logits, state = self.gru(input_, hidden)
         outputs_fw = logits[:,:, :self.hidden_units]
         outputs_bw = logits[:,:, self.hidden_units:]
@@ -58,7 +60,7 @@ class HigherModel(nn.Module):
         return torch.stack(logit_list), state
 
     def init_hidden(self, number_of_variants):
-        weight = next(self.parameters()).data
+        weight = next(self.gru.parameters()).data
         hidden = weight.new(self.num_layers*2 , number_of_variants, self.hidden_units).zero_() # self.num_layers*2(bidirection)
         return hidden
     
