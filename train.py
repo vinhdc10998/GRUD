@@ -36,14 +36,15 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     with torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
-            label = torch.reshape(y, (-1,2)).long()
 
             # Compute prediction error
             logits, prediction = model(X.float())
-            loss = loss_fn(logits, label[:,1])
+            label = torch.reshape(y, (y.shape[0]*y.shape[1], -1)).long()
+            logits = torch.reshape(logits, (logits.shape[0] * logits.shape[1], -1))
+            loss = loss_fn(logits, label[:,0])
             _r2_score += r2_score(
-                torch.argmax(prediction,dim=1).cpu().detach().numpy(),
-                label[:,1].cpu().detach().numpy()
+                y.cpu().detach().numpy(),
+                torch.argmax(prediction, dim=-1).cpu().detach().numpy()
             )
             test_loss += loss.item()
 
@@ -58,16 +59,17 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
-        label = torch.reshape(y, (-1,2)).long()
-
         # Compute prediction error
         logits, prediction = model(X.float())
-        loss = loss_fn(logits, label[:,1])
+        label = torch.reshape(y, (y.shape[0]*y.shape[1], -1)).long()
+        logits = torch.reshape(logits, (logits.shape[0] * logits.shape[1], -1))
+        loss = loss_fn(logits, label[:, 0])
         _r2_score += r2_score(
-            torch.argmax(prediction,dim=1).cpu().detach().numpy(),
-            label[:,1].cpu().detach().numpy()
+            y.cpu().detach().numpy(),
+            torch.argmax(prediction, dim=-1).cpu().detach().numpy()
         )
         train_loss += loss.item()
+
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
@@ -98,8 +100,8 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     model = HybridModel(model_config, a1_freq_list, batch_size=batch_size, mode=model_type).float().to(device)
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
     print("Number of learnable parameters:",count_parameters(model))
-    # loss_fn = model.CustomCrossEntropyLoss
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
@@ -107,12 +109,15 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     _r2_score_list, loss_values = [], [] #train
     r2_test_list, test_loss_list = [], [] #validation
     for t in range(epochs):
+        # print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}")
+
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
         test_loss, r2_test = evaluation(val_loader, model, device, loss_fn)
+        
         loss_values.append(train_loss)
         _r2_score_list.append(r2_train)
-        test_loss_list.append(test_loss)
         r2_test_list.append(r2_test)
+        test_loss_list.append(test_loss)
         print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")
 
     draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region)
@@ -147,7 +152,8 @@ def main():
     epochs = args.epochs
     chromosome = args.chromosome
     regions = args.regions.split("-")
-
+    with open('data/org_data/index.txt','w+') as index_file:
+        index_file.write("0")
     for region in range(int(regions[0]), int(regions[-1])+1):
         print(f"----------Training Region {region}----------")
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:

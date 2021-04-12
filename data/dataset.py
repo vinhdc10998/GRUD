@@ -8,7 +8,7 @@ class RegionDataset(Dataset):
     def __init__(self, root_dir, region=1, chromosome='chr22'):
         hap_dir = os.path.join(root_dir,f'{chromosome}_{region}.hap.gz')
         legend_dir = os.path.join(root_dir,f'{chromosome}_{region}.legend.gz')
-        label_hap_dir = os.path.join(root_dir, f'{chromosome}_true.hap.gz')
+        label_hap_dir = os.path.join(root_dir, f'{chromosome}_true.hap')
         label_legend_dir = os.path.join(root_dir, f'{chromosome}_true.legend.gz') 
         panel_dir = os.path.join(root_dir, f'region_{region}.legend.gz')
 
