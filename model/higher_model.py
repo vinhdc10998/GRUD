@@ -17,9 +17,9 @@ class HigherModel(nn.Module):
         self.batch_size = batch_size
 
         self.features_1 = nn.Linear(self.input_dim, self.feature_size)
-        self.features_2 = nn.Linear(self.feature_size, self.feature_size*4)
+        self.features_2 = nn.Linear(self.feature_size, self.feature_size*2)
         self.gru = nn.GRU(
-            input_size = self.feature_size*4,
+            input_size = self.feature_size*2,
             hidden_size = self.hidden_units,
             num_layers = self.num_layers,
             bidirectional = self.bidir)
@@ -54,7 +54,6 @@ class HigherModel(nn.Module):
             gru_output = torch.reshape(torch.stack(gru_output),(batch,1,-1))
             logit = self.list_linear[index](gru_output)
             logit_list.append(logit)
-
         return torch.stack(logit_list), state
 
     def init_hidden(self, number_of_variants):

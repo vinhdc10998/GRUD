@@ -42,9 +42,10 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
             label = torch.reshape(y, (y.shape[0]*y.shape[1], -1)).long()
             logits = torch.reshape(logits, (logits.shape[0] * logits.shape[1], -1))
             loss = loss_fn(logits, label[:,0])
+            y_pred = torch.argmax(prediction, dim=-1)
             _r2_score += r2_score(
                 y.cpu().detach().numpy(),
-                torch.argmax(prediction, dim=-1).cpu().detach().numpy()
+                y_pred.cpu().detach().numpy()
             )
             test_loss += loss.item()
 
@@ -64,11 +65,11 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
         label = torch.reshape(y, (y.shape[0]*y.shape[1], -1)).long()
         logits = torch.reshape(logits, (logits.shape[0] * logits.shape[1], -1))
         loss = loss_fn(logits, label[:, 0])
+        y_pred = torch.argmax(prediction, dim=-1)
         _r2_score += r2_score(
             y.cpu().detach().numpy(),
-            torch.argmax(prediction, dim=-1).cpu().detach().numpy()
+            y_pred.cpu().detach().numpy()
         )
-        train_loss += loss.item()
 
         # Backpropagation
         optimizer.zero_grad()
@@ -76,6 +77,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
         optimizer.step()
         scheduler.step()
 
+        train_loss += loss.item()
     _r2_score /= batch+1
     train_loss /= batch+1
     return train_loss, _r2_score
@@ -104,7 +106,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
     _r2_score_list, loss_values = [], [] #train
     r2_test_list, test_loss_list = [], [] #validation
@@ -142,7 +144,7 @@ def main():
                         dest='regions', help='Region range')
     parser.add_argument('--chr', type=str, default='chr22', required=False,
                         dest='chromosome', help='Chromosome')
-    parser.add_argument('--lr', type=int, default=1e-4, required=False,
+    parser.add_argument('--lr', type=float, default=1e-4, required=False,
                         dest='learning_rate', help='Learning rate')
     args = parser.parse_args()
 
