@@ -1,13 +1,12 @@
 import os
 import json
 import torch
-import datetime
+import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from sklearn.metrics import r2_score
 from model.hybrid_model import HybridModel
 from data.dataset import RegionDataset
-from torch import nn
 from torch.utils.data import DataLoader
 torch.manual_seed(42)
 
@@ -25,6 +24,12 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
     fig.tight_layout()
     plt.savefig(f"images/region_{region}.png")
 
+def equal_bin(N, m):
+    sep = (N.size/float(m))*np.arange(1,m+1)
+    idx = sep.searchsorted(np.arange(N.size))
+    return idx[N.argsort().argsort()]
+
+
 def evaluation(dataloader, model, device):
     #TODO
     '''
@@ -33,6 +38,8 @@ def evaluation(dataloader, model, device):
     model.eval()
     _r2_score = 0
     with torch.no_grad():
+        predictions = []
+        labels = []
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
             _, prediction = model(X.float())
@@ -41,8 +48,12 @@ def evaluation(dataloader, model, device):
                 y.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
             )
+            predictions.append(y_pred)
+            labels.append(y)
+    predictions = torch.cat(predictions, dim=0)
+    labels = torch.cat(labels, dim=0)
     _r2_score /= batch+1
-    return _r2_score
+    return _r2_score, predictions, labels
 
 def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
     if args.gpu == True:
@@ -57,12 +68,27 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
     model_type = args.model_type
     model_dir = args.model_dir
 
-    a1_freq_list = torch.tensor(a1_freq_list.tolist()*batch_size)
+    a1_freq_list_loss = torch.tensor(a1_freq_list.tolist()*batch_size)
     #Init Model
-    model = HybridModel(model_config, a1_freq_list, batch_size=batch_size, mode=model_type).float().to(device)
+    model = HybridModel(model_config, a1_freq_list_loss, batch_size=batch_size, mode=model_type).float().to(device)
     model.load_state_dict(torch.load(os.path.join(model_dir, f'model_region_{region}.pt')))
     print(f"Loaded {model_type} model")
-    r2_test = evaluation(dataloader, model, device)
+    r2_test, predictions, labels = evaluation(dataloader, model, device)
+    bins = 30
+    bins_list = equal_bin(a1_freq_list, bins)
+    pred_bins = [[] for _ in range(bins)]
+    label_bins = [[] for _ in range(bins)]
+    for index, bin in enumerate(bins_list):
+        pred_bins[bin].append(predictions[:, index])
+        label_bins[bin].append(labels[:, index])
+    r2_score_list = []
+    for index in range(bins):
+        y = torch.stack(label_bins[index]).detach().numpy()
+        y_pred = torch.stack(pred_bins[index]).detach().numpy()
+        _r2_score = r2_score(y, y_pred)
+        r2_score_list.append(_r2_score)
+    plt.plot(range(bins), r2_score_list)
+    plt.savefig("images/r2_maf.png")
     print("EValutate R2 score:", r2_test)
 
 def main():
@@ -98,7 +124,7 @@ def main():
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
         dataset = RegionDataset(root_dir, region, chromosome)
-        testloader = DataLoader(testloader, batch_size=batch_size, shuffle=True)
+        testloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         run(
             testloader,
             dataset.a1_freq_list,

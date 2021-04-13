@@ -117,7 +117,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=300, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
     _r2_score_list, loss_values = [], [] #train
     r2_test_list, test_loss_list = [], [] #validation
@@ -173,7 +173,7 @@ def main():
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
         dataset = RegionDataset(root_dir, region, chromosome)
-        train_size = int(0.7 * len(dataset))
+        train_size = int(0.8 * len(dataset))
         test_size = len(dataset) - train_size
         train_set, val_set = torch.utils.data.random_split(dataset, [train_size, test_size])
         print("[Train - Test]:", len(train_set), len(val_set))
