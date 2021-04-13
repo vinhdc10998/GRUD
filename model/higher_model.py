@@ -18,8 +18,10 @@ class HigherModel(nn.Module):
 
         self.features_1 = nn.Linear(self.input_dim, self.feature_size)
         self.features_2 = nn.Linear(self.feature_size, self.feature_size*2)
+        self.features_3 = nn.Linear(self.feature_size*2, self.feature_size*5)
+
         self.gru = nn.GRU(
-            input_size = self.feature_size*2,
+            input_size = self.feature_size*5,
             hidden_size = self.hidden_units,
             num_layers = self.num_layers,
             bidirectional = self.bidir)
@@ -40,6 +42,7 @@ class HigherModel(nn.Module):
         batch = input_.shape[0]
         input_ = self.features_1(input_)
         input_ = self.features_2(input_)
+        input_ = self.features_3(input_)
         logits, state = self.gru(input_, hidden)
         outputs_fw = logits[:,:, :self.hidden_units]
         outputs_bw = logits[:,:, self.hidden_units:]
