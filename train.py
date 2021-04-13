@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+import datetime
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from sklearn.metrics import r2_score
@@ -82,6 +83,14 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss /= batch+1
     return train_loss, _r2_score
 
+def save_model(model, region, path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    dt = datetime.datetime.today()
+    filename = os.path.join(path, f'model_region_{region}.pt')
+    torch.save(model.state_dict(), filename)
+
+
 def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epochs=200):
     if args.gpu == True:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -94,6 +103,8 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
         print("You're using CPU to impute genotype")
     model_type = args.model_type
     lr = args.learning_rate
+    output_model_dir = args.output_model_dir
+
     a1_freq_list = torch.tensor(a1_freq_list.tolist()*batch_size)
     train_loader = dataloader['train']
     val_loader = dataloader['validation']
@@ -106,13 +117,12 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.01)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=300, gamma=0.1)
 
     _r2_score_list, loss_values = [], [] #train
     r2_test_list, test_loss_list = [], [] #validation
     for t in range(epochs):
         # print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}")
-
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
         test_loss, r2_test = evaluation(val_loader, model, device, loss_fn)
         
@@ -123,7 +133,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
         print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")
 
     draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region)
-
+    save_model(model, region, output_model_dir)
 
 def main():
     description = 'Genotype Imputation'
@@ -146,6 +156,8 @@ def main():
                         dest='chromosome', help='Chromosome')
     parser.add_argument('--lr', type=float, default=1e-4, required=False,
                         dest='learning_rate', help='Learning rate')
+    parser.add_argument('--output-model-dir', type=str, default='model/weights', required=False,
+                        dest='output_model_dir', help='Output weights model dir')
     args = parser.parse_args()
 
     root_dir = args.root_dir
@@ -154,14 +166,14 @@ def main():
     epochs = args.epochs
     chromosome = args.chromosome
     regions = args.regions.split("-")
-    with open('data/org_data/index.txt','w+') as index_file:
+    with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
         index_file.write("0")
     for region in range(int(regions[0]), int(regions[-1])+1):
         print(f"----------Training Region {region}----------")
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
         dataset = RegionDataset(root_dir, region, chromosome)
-        train_size = int(0.8 * len(dataset))
+        train_size = int(0.7 * len(dataset))
         test_size = len(dataset) - train_size
         train_set, val_set = torch.utils.data.random_split(dataset, [train_size, test_size])
         print("[Train - Test]:", len(train_set), len(val_set))
