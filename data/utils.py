@@ -211,7 +211,7 @@ def load_lines(filename,header=False):
 #     return haplotype_list, label_haplotype_list, a1_freq_list
 
 
-def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_list):
+def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_list, index_start):
     def one_hot(allele, a1_freq):
         if allele is None:
             return [1.0 - a1_freq, a1_freq]
@@ -292,7 +292,7 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
         positions.append(label_info_dict[key].position)
     
     start_index = None
-    with open("data/org_data/index.txt", "r") as index_file:
+    with open(index_start, "r") as index_file:
         start_index = int(index_file.read())
     
     true_haplotype_list = []
@@ -321,7 +321,7 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
                         a1_freq_list.append(imp_site_info_list[t].a1_freq)
                         count += 1
             if count == label_site_count:
-                with open("data/org_data/index.txt", "w+") as index_file:
+                with open(index_start, "w+") as index_file:
                     start_index = index_file.write(str(k))
                 break
     true_haplotype_list = np.reshape(np.array(true_haplotype_list, dtype=np.int), (-1, len(true_haplotype_list)))
