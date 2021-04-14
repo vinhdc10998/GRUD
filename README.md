@@ -1,6 +1,17 @@
 # GenotypeImputationGRU
+## OVERVIEW
+GenotypeImputationGRU is a recurrent neural network based genotype imputation program implemented in Python. 
 
-## Example train
+## REQUIREMENT
+- Python >= 3.5
+- Python packages
+  - NumPy
+  - PyTorch
+```
+pip install -r requirements.txt
+```
+## RUN
+### Example train
 ```
 python train.py --root-dir data/org_data/\
                 --model-config-dir model/config/\
