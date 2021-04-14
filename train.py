@@ -1,7 +1,6 @@
 import os
 import json
 import torch
-import datetime
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from sklearn.metrics import r2_score
@@ -37,15 +36,13 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     with torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
-
-            # Compute prediction error
+        # Compute prediction error`
             logits, prediction = model(X.float())
-            label = torch.reshape(y, (y.shape[0]*y.shape[1], -1)).long()
-            logits = torch.reshape(logits, (logits.shape[0] * logits.shape[1], -1))
-            loss = loss_fn(logits, label[:,0])
+            label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
+            loss = loss_fn(logits, label[:, 0])
             y_pred = torch.argmax(prediction, dim=-1)
             _r2_score += r2_score(
-                y.cpu().detach().numpy(),
+                y.T.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
             )
             test_loss += loss.item()
@@ -60,11 +57,10 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     _r2_score = 0
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
-        # Compute prediction error
+        X, y = X.to(device), y.T.to(device)
+        # Compute prediction error`
         logits, prediction = model(X.float())
         label = torch.reshape(y, (y.shape[0]*y.shape[1], -1)).long()
-        logits = torch.reshape(logits, (logits.shape[0] * logits.shape[1], -1))
         loss = loss_fn(logits, label[:, 0])
         y_pred = torch.argmax(prediction, dim=-1)
         _r2_score += r2_score(
@@ -86,7 +82,6 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
 def save_model(model, region, path):
     if not os.path.exists(path):
         os.mkdir(path)
-    dt = datetime.datetime.today()
     filename = os.path.join(path, f'model_region_{region}.pt')
     torch.save(model.state_dict(), filename)
 
@@ -101,7 +96,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     else: 
         device = 'cpu'
         print("You're using CPU to impute genotype")
-    model_type = args.model_type
+    type_model = args.model_type
     lr = args.learning_rate
     output_model_dir = args.output_model_dir
 
@@ -110,7 +105,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     val_loader = dataloader['validation']
 
     #Init Model
-    model = HybridModel(model_config, a1_freq_list, batch_size=batch_size, mode=model_type).float().to(device)
+    model = HybridModel(model_config, a1_freq_list, batch_size=batch_size, type_model=type_model).float().to(device)
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
