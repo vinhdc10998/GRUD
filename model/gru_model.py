@@ -14,9 +14,10 @@ class GRUModel(nn.Module):
         self.output_points_fw = model_config['output_points_fw']
         self.output_points_bw = model_config['output_points_bw']
         self.type_model = type_model
-        self.features_1 = nn.Linear(self.input_dim, self.feature_size)
-        self.features_2 = nn.Linear(self.feature_size, self.feature_size*2)
+
         output_feature = self.feature_size*2
+        self.features_1 = nn.Linear(self.input_dim, self.feature_size)
+        self.features_2 = nn.Linear(self.feature_size, output_feature)
 
         self.gru_fw = nn.GRU(
             input_size = output_feature,
