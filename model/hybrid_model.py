@@ -18,6 +18,9 @@ class HybridModel(nn.Module):
 
         if self.type_model == 'Higher' or self.type_model == 'Lower':
             self.gruModel = GRUModel(model_config, type_model=self.type_model)
+        else:
+            self.higherModel = GRUModel(model_config, type_model='Higher')
+            self.lowerModel = GRUModel(model_config, type_model='Lower')
 
         self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list)
         self.softmax = nn.Softmax(dim=1)
@@ -26,7 +29,7 @@ class HybridModel(nn.Module):
         batch = input_.shape[0]
 
         #Higher Model
-        if self.type_model == 'Higher':
+        if self.type_model == 'Higher' or self.type_model == 'Lower':
             init_hidden_higher = self.gruModel.init_hidden(batch)
             logits = self.gruModel(input_, init_hidden_higher) #raw output
             logit = torch.cat(logits, dim=0)

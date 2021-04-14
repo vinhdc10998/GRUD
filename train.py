@@ -79,10 +79,10 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss /= batch+1
     return train_loss, _r2_score
 
-def save_model(model, region, path):
+def save_model(model, region, type_model, path):
     if not os.path.exists(path):
         os.mkdir(path)
-    filename = os.path.join(path, f'model_region_{region}.pt')
+    filename = os.path.join(path, f'{type_model}_region_{region}.pt')
     torch.save(model.state_dict(), filename)
 
 
@@ -128,7 +128,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
         print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")
 
     draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region)
-    save_model(model, region, output_model_dir)
+    save_model(model, region, type_model, output_model_dir)
 
 def main():
     description = 'Genotype Imputation'

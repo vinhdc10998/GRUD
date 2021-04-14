@@ -38,6 +38,13 @@ class GRUModel(nn.Module):
                 self.list_linear.append(nn.Linear(self.hidden_units, self.num_classes, bias=True))
         self.list_linear = nn.ModuleList(self.list_linear)
 
+    def _compute_gru(self, gru_cell, _input, hidden):
+        if self.type_model == 'Higher':
+            logits, state = gru_cell(_input, hidden)
+            return logits, state
+        elif self.type_model == 'Lower':
+            pass
+
 
     def forward(self, x, hidden=None):
         '''
@@ -59,7 +66,7 @@ class GRUModel(nn.Module):
 
         if fw_end is not None:
             inputs_fw = torch.stack(gru_inputs[: fw_end + 1])
-            outputs, _ = self.gru_fw(inputs_fw, hidden)
+            outputs, _ = self._compute_gru(self.gru_fw, inputs_fw, hidden)
             for t in range(fw_end + 1):
                 outputs_fw[t] = outputs[t]
 
@@ -68,7 +75,7 @@ class GRUModel(nn.Module):
                 gru_inputs[i]
                 for i in range(self.num_inputs - 1, bw_start - 1, -1)
             ])
-            outputs, _ = self.gru_bw(inputs_bw, hidden)
+            outputs, _ = self._compute_gru(self.gru_bw, inputs_bw, hidden)
             for i, t in enumerate(
                 range(self.num_inputs - 1, bw_start - 1, -1)):
                 outputs_bw[t] = outputs[i]
