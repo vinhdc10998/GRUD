@@ -1,10 +1,12 @@
 import os
 import json
+from numpy.lib.twodim_base import _min_int
 import torch
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from sklearn.metrics import r2_score
 from model.hybrid_model import HybridModel
+from model.early_stopping import EarlyStopping
 from data.dataset import RegionDataset
 from torch import nn
 from torch.utils.data import DataLoader
@@ -25,7 +27,6 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
     plt.savefig(f"images/region_{region}.png")
 
 def evaluation(dataloader, model, device, loss_fn, is_train=True):
-    #TODO
     '''
         Evaluate model with R square score
     '''
@@ -58,7 +59,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
-        # Compute prediction error`
+        # Compute prediction error
         logits, prediction = model(X.float())
         label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
         loss = loss_fn(logits, label[:, 0])
@@ -67,7 +68,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
             y.cpu().detach().numpy(),
             y_pred.cpu().detach().numpy()
         )
-        # Backpropagation
+        #Backpropagation
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -78,10 +79,12 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss /= batch+1
     return train_loss, _r2_score
 
-def save_model(model, region, type_model, path):
+def save_model(model, region, type_model, path, best=False):
     if not os.path.exists(path):
         os.mkdir(path)
     filename = os.path.join(path, f'{type_model}_region_{region}.pt')
+    if best == True:
+        filename = os.path.join(path, f'Best_{type_model}_region_{region}.pt')
     torch.save(model.state_dict(), filename)
 
 
@@ -106,26 +109,38 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, type_model=type_model).float().to(device)
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = nn.CrossEntropyLoss()
     loss_fn = model.CustomCrossEntropyLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)
+    early_stopping = EarlyStopping(patience=10)
 
     _r2_score_list, loss_values = [], [] #train
     r2_test_list, test_loss_list = [], [] #validation
+    best_test_r2 = -99999999
     for t in range(epochs):
         # print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}")
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
         test_loss, r2_test = evaluation(val_loader, model, device, loss_fn)
-        
         loss_values.append(train_loss)
         _r2_score_list.append(r2_train)
         r2_test_list.append(r2_test)
         test_loss_list.append(test_loss)
         print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")
+        
+        #Save best model
+        if r2_test > best_test_r2:
+            best_test_r2 = r2_test
+            best_epochs = t+1
+            save_model(model, region, type_model, output_model_dir, best=True)
 
+        #Early stopping
+        if args.early_stopping:
+            early_stopping(test_loss)
+            if early_stopping.early_stop:
+                break
+    print(f"Best model at epochs {best_epochs} with R2 score: {best_test_r2}")
     draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region)
     save_model(model, region, type_model, output_model_dir)
 
@@ -152,6 +167,9 @@ def main():
                         dest='learning_rate', help='Learning rate')
     parser.add_argument('--output-model-dir', type=str, default='model/weights', required=False,
                         dest='output_model_dir', help='Output weights model dir')
+    parser.add_argument('--early-stopping', type=bool, default=True, required=False,
+                        dest='early_stopping', help='Early stopping')
+
     args = parser.parse_args()
 
     root_dir = args.root_dir
@@ -160,6 +178,7 @@ def main():
     epochs = args.epochs
     chromosome = args.chromosome
     regions = args.regions.split("-")
+
     with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
         index_file.write("0")
     for region in range(int(regions[0]), int(regions[-1])+1):

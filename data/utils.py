@@ -217,6 +217,10 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
             return [1.0 - a1_freq, a1_freq]
         return [1 - allele, allele]
 
+    def convert_maf(a1_freq):
+        if a1_freq > 0.5:
+            return 1. - a1_freq
+        return a1_freq
     site_info_dict = {}
     marker_site_count = 0
     label_site_count = 0
@@ -318,7 +322,7 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
                         and items[3] == imp_site_info_list[t].a1:
                         hap = linecache.getline(hap_true_file, k).rstrip().split()
                         true_haplotype_list.append(hap) 
-                        a1_freq_list.append(imp_site_info_list[t].a1_freq)
+                        a1_freq_list.append(convert_maf(imp_site_info_list[t].a1_freq))
                         count += 1
             if count == label_site_count:
                 with open(index_start, "w+") as index_file:

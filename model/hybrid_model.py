@@ -18,13 +18,16 @@ class HybridModel(nn.Module):
 
         gammar = 0
         if self.type_model == 'Higher' or self.type_model == 'Lower':
-            gammar = 1 if self.type_model == 'Higher' else -1
+            gammar = 0.01 if self.type_model == 'Higher' else -0.01
             self.gruModel = GRUModel(model_config, type_model=self.type_model)
         else:
+            #TODO
+            #Train higher and lower model to get weight models
+            assert True
             self.higherModel = GRUModel(model_config, type_model='Higher')
             self.lowerModel = GRUModel(model_config, type_model='Lower')
 
-        self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, gammar, device)
+        self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, device, gammar)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input_):
@@ -36,5 +39,4 @@ class HybridModel(nn.Module):
             logit = torch.cat(logits, dim=0)
             pred = torch.reshape(self.softmax(logit), shape=[self.num_outputs, -1, self.num_classes]) 
             return logit, pred
-        
         return None

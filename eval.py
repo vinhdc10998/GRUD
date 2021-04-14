@@ -31,7 +31,6 @@ def equal_bin(N, m):
 
 
 def evaluation(dataloader, model, device):
-    #TODO
     '''
         Evaluate model with R square score
     '''
@@ -42,8 +41,9 @@ def evaluation(dataloader, model, device):
         labels = []
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
+            # Compute prediction error`
             _, prediction = model(X.float())
-            y_pred = torch.argmax(prediction, dim=-1)
+            y_pred = torch.argmax(prediction, dim=-1).T
             _r2_score += r2_score(
                 y.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
@@ -65,16 +65,16 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
     else: 
         device = 'cpu'
         print("You're using CPU to impute genotype")
-    model_type = args.model_type
+    type_model = args.model_type
     model_dir = args.model_dir
 
     a1_freq_list_loss = torch.tensor(a1_freq_list.tolist()*batch_size)
     #Init Model
-    model = HybridModel(model_config, a1_freq_list_loss, batch_size=batch_size, mode=model_type).float().to(device)
-    model.load_state_dict(torch.load(os.path.join(model_dir, f'model_region_{region}.pt')))
-    print(f"Loaded {model_type} model")
+    model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, type_model=type_model).float().to(device)
+    model.load_state_dict(torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt')))
+    print(f"Loaded {type_model}_{region} model")
     r2_test, predictions, labels = evaluation(dataloader, model, device)
-    bins = 30
+    bins = 20
     bins_list = equal_bin(a1_freq_list, bins)
     pred_bins = [[] for _ in range(bins)]
     label_bins = [[] for _ in range(bins)]
@@ -89,7 +89,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
         r2_score_list.append(_r2_score)
     plt.plot(range(bins), r2_score_list)
     plt.savefig("images/r2_maf.png")
-    print("EValutate R2 score:", r2_test)
+    print("Evalutate R2 score:", r2_test)
 
 def main():
     description = 'Genotype Imputation'
