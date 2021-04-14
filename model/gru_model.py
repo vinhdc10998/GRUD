@@ -1,6 +1,7 @@
 import torch
 from torch import nn
-
+#TODO
+#Lower Model
 class GRUModel(nn.Module):
     def __init__(self, model_config, type_model):
         super(GRUModel,self).__init__()
@@ -15,21 +16,9 @@ class GRUModel(nn.Module):
         self.output_points_bw = model_config['output_points_bw']
         self.type_model = type_model
 
-        output_feature = self.feature_size*2
         self.features_1 = nn.Linear(self.input_dim, self.feature_size)
-        self.features_2 = nn.Linear(self.feature_size, output_feature)
-
-        self.gru_fw = nn.GRU(
-            input_size = output_feature,
-            hidden_size = self.hidden_units,
-            num_layers = self.num_layers
-        )
-        
-        self.gru_bw = nn.GRU(
-            input_size = output_feature,
-            hidden_size = self.hidden_units,
-            num_layers = self.num_layers
-        )
+        self.tanh = nn.Tanh()
+        self.gru = nn.ModuleDict(self._create_gru_cell(self.feature_size, self.hidden_units, self.num_layers, self.type_model))
         
         self.list_linear = []
         for (t_fw, t_bw) in (zip(self.output_points_fw, self.output_points_bw)):
@@ -39,13 +28,30 @@ class GRUModel(nn.Module):
                 self.list_linear.append(nn.Linear(self.hidden_units, self.num_classes, bias=True))
         self.list_linear = nn.ModuleList(self.list_linear)
 
+    @staticmethod
+    def _create_gru_cell(input_size, hidden_units, num_layers, type_model):
+        if type_model == 'Higher':
+            return {
+                'fw': nn.GRU(
+                    input_size = input_size,
+                    hidden_size = hidden_units,
+                    num_layers = num_layers
+                ),
+                'bw': nn.GRU(
+                    input_size = input_size,
+                    hidden_size = hidden_units,
+                    num_layers = num_layers
+                )
+            }
+        elif type_model == 'Lower':
+            return None
+
     def _compute_gru(self, gru_cell, _input, hidden):
         if self.type_model == 'Higher':
             logits, state = gru_cell(_input, hidden)
             return logits, state
         elif self.type_model == 'Lower':
-            pass
-
+            return None
 
     def forward(self, x, hidden=None):
         '''
@@ -55,19 +61,19 @@ class GRUModel(nn.Module):
         gru_inputs = []
         for index in range(self.num_inputs):
             gru_input = self.features_1(_input[index])
-            gru_input = self.features_2(gru_input)
+            gru_input = self.tanh(gru_input)
             gru_inputs.append(gru_input)
 
-
+        
         fw_end = self.output_points_fw[-1]
         bw_start = self.output_points_bw[0]
 
-        outputs_fw = [None] * self.num_inputs
-        outputs_bw = [None] * self.num_inputs
+        outputs_fw = [None for _ in range(self.num_inputs)]
+        outputs_bw = [None for _ in range(self.num_inputs)]
 
         if fw_end is not None:
             inputs_fw = torch.stack(gru_inputs[: fw_end + 1])
-            outputs, _ = self._compute_gru(self.gru_fw, inputs_fw, hidden)
+            outputs, _ = self._compute_gru(self.gru['fw'], inputs_fw, hidden)
             for t in range(fw_end + 1):
                 outputs_fw[t] = outputs[t]
 
@@ -76,7 +82,7 @@ class GRUModel(nn.Module):
                 gru_inputs[i]
                 for i in range(self.num_inputs - 1, bw_start - 1, -1)
             ])
-            outputs, _ = self._compute_gru(self.gru_bw, inputs_bw, hidden)
+            outputs, _ = self._compute_gru(self.gru['bw'], inputs_bw, hidden)
             for i, t in enumerate(
                 range(self.num_inputs - 1, bw_start - 1, -1)):
                 outputs_bw[t] = outputs[i]

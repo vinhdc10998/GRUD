@@ -16,22 +16,23 @@ class HybridModel(nn.Module):
         self.bidir = bidir
         self.batch_size = batch_size
 
+        gammar = 0
         if self.type_model == 'Higher' or self.type_model == 'Lower':
+            gammar = 1 if self.type_model == 'Higher' else -1
             self.gruModel = GRUModel(model_config, type_model=self.type_model)
         else:
             self.higherModel = GRUModel(model_config, type_model='Higher')
             self.lowerModel = GRUModel(model_config, type_model='Lower')
 
-        self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list)
+        self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, gammar)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input_):
         batch = input_.shape[0]
-
-        #Higher Model
+        #Higher or Lower Model
         if self.type_model == 'Higher' or self.type_model == 'Lower':
             init_hidden_higher = self.gruModel.init_hidden(batch)
-            logits = self.gruModel(input_, init_hidden_higher) #raw output
+            logits = self.gruModel(input_, init_hidden_higher)
             logit = torch.cat(logits, dim=0)
             pred = torch.reshape(self.softmax(logit), shape=[self.num_outputs, -1, self.num_classes]) 
             return logit, pred

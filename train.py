@@ -36,13 +36,13 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     with torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
-        # Compute prediction error`
+            # Compute prediction error`
             logits, prediction = model(X.float())
             label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
             loss = loss_fn(logits, label[:, 0])
-            y_pred = torch.argmax(prediction, dim=-1)
+            y_pred = torch.argmax(prediction, dim=-1).T
             _r2_score += r2_score(
-                y.T.cpu().detach().numpy(),
+                y.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
             )
             test_loss += loss.item()
@@ -57,17 +57,16 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     _r2_score = 0
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.T.to(device)
+        X, y = X.to(device), y.to(device)
         # Compute prediction error`
         logits, prediction = model(X.float())
-        label = torch.reshape(y, (y.shape[0]*y.shape[1], -1)).long()
+        label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
         loss = loss_fn(logits, label[:, 0])
-        y_pred = torch.argmax(prediction, dim=-1)
+        y_pred = torch.argmax(prediction, dim=-1).T
         _r2_score += r2_score(
             y.cpu().detach().numpy(),
             y_pred.cpu().detach().numpy()
         )
-
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
@@ -100,7 +99,6 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     lr = args.learning_rate
     output_model_dir = args.output_model_dir
 
-    a1_freq_list = torch.tensor(a1_freq_list.tolist()*batch_size)
     train_loader = dataloader['train']
     val_loader = dataloader['validation']
 
@@ -111,6 +109,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
 
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = nn.CrossEntropyLoss()
+    loss_fn = model.CustomCrossEntropyLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
