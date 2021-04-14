@@ -103,7 +103,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     val_loader = dataloader['validation']
 
     #Init Model
-    model = HybridModel(model_config, a1_freq_list, batch_size=batch_size, type_model=type_model).float().to(device)
+    model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, type_model=type_model).float().to(device)
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
