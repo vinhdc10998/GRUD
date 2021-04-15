@@ -1,6 +1,5 @@
 import os
 import json
-from numpy.lib.twodim_base import _min_int
 import torch
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
@@ -12,7 +11,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 torch.manual_seed(42)
 
-def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
+def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type_model):
     fig, axs = plt.subplots(2, 2)
     fig.suptitle(f'Region {region}')
     axs[0,0].set_title("Training Loss")
@@ -24,7 +23,7 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
     axs[1,1].set_title("Validation R2 score")
     axs[1,1].plot(val_r2_score)
     fig.tight_layout()
-    plt.savefig(f"images/region_{region}.png")
+    plt.savefig(f"images/{type_model}_region_{region}.png")
 
 def evaluation(dataloader, model, device, loss_fn, is_train=True):
     '''
@@ -141,7 +140,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
             if early_stopping.early_stop:
                 break
     print(f"Best model at epochs {best_epochs} with R2 score: {best_test_r2}")
-    draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region)
+    draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region, type_model)
     save_model(model, region, type_model, output_model_dir)
 
 def main():

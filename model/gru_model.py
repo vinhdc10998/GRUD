@@ -15,19 +15,20 @@ class GRUModel(nn.Module):
         self.output_points_bw = model_config['output_points_bw']
         self.type_model = type_model
 
-        output_features = self.feature_size*2
+        output_features = self.feature_size * 5
         self.features_1 = nn.Linear(self.input_dim, self.feature_size)
         self.features_2 = nn.Linear(self.feature_size, output_features)
-
+        self.features_3 = nn.Linear(output_features, output_features*10)
+        self.tanh = nn.Tanh()
         self.gru = nn.ModuleDict(self._create_gru_cell(
-            output_features, 
+            output_features*10, 
             self.hidden_units, 
             self.num_layers, 
             self.type_model
         ))
         
         self.list_linear = nn.ModuleList(self._create_linear_list(
-            output_features,
+            output_features*10,
             self.hidden_units,
             self.num_layers,
             self.num_classes,
@@ -37,17 +38,15 @@ class GRUModel(nn.Module):
         ))
 
     @staticmethod
-    def _create_gru_cell(input_size, hidden_units, num_layers, type_model):
+    def _create_gru_cell(input_size, hidden_units, num_layers, type_model, dropout=0.2):
+        gru = None
         if type_model == 'Higher':
             gru = nn.GRU(
                     input_size = input_size,
                     hidden_size = hidden_units,
                     num_layers = num_layers,
+                    dropout = dropout
                 )
-            return {
-                'fw': gru,
-                'bw': gru
-            }
         elif type_model == 'Lower':
             input_size_1 = input_size
             input_size_2 = input_size_1 + hidden_units
@@ -59,10 +58,10 @@ class GRUModel(nn.Module):
                 nn.GRU(input_size_3, hidden_units),
                 nn.GRU(input_size_4, hidden_units)
             ])
-            return {
-                'fw': gru,
-                'bw': gru
-            }
+        return {
+            'fw': gru,
+            'bw': gru
+        }
 
     @staticmethod
     def _create_linear_list(feature_size, hidden_units, num_layers, num_classes, output_points_fw, output_points_bw, type_model):
@@ -70,7 +69,6 @@ class GRUModel(nn.Module):
             input_size = hidden_units
         elif type_model == 'Lower':
             input_size = feature_size + hidden_units*num_layers
-            print(input_size)
         list_linear = []
         for (t_fw, t_bw) in (zip(output_points_fw, output_points_bw)):
             if (t_fw is not None) and (t_bw is not None):
@@ -99,7 +97,11 @@ class GRUModel(nn.Module):
         gru_inputs = []
         for index in range(self.num_inputs):
             gru_input = self.features_1(_input[index])
+            gru_input = self.tanh(gru_input)
             gru_input = self.features_2(gru_input)
+            gru_input = self.tanh(gru_input)
+            gru_input = self.features_3(gru_input)
+            gru_input = self.tanh(gru_input)
             gru_inputs.append(gru_input)
 
         

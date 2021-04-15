@@ -3,6 +3,7 @@ import json
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from argparse import ArgumentParser
 from sklearn.metrics import r2_score
 from model.hybrid_model import HybridModel
@@ -24,11 +25,26 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
     fig.tight_layout()
     plt.savefig(f"images/region_{region}.png")
 
-def equal_bin(N, m):
-    sep = (N.size/float(m))*np.arange(1,m+1)
-    idx = sep.searchsorted(np.arange(N.size))
-    return idx[N.argsort().argsort()]
+def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_prefix = 'images'):
+    bins_list = pd.cut(a1_freq_list, bins, labels=range(bins))  
+    pred_bins = [[] for _ in range(bins)]
+    label_bins = [[] for _ in range(bins)]
+    for index, bin in enumerate(bins_list):
+        pred_bins[bin].append(pred[:, index])
+        label_bins[bin].append(label[:, index])
+    r2_score_list = []
+    for index in range(bins):
+        y = torch.stack(label_bins[index]).detach().numpy()
+        y_pred = torch.stack(pred_bins[index]).detach().numpy()
+        _r2_score = r2_score(y, y_pred)
+        r2_score_list.append(_r2_score)
 
+    x_axis = np.unique(pd.cut(a1_freq_list, bins, labels=np.linspace(start=0, stop=0.5, num=bins)))
+    plt.plot(x_axis, r2_score_list)
+    plt.grid(linestyle='--')
+    plt.xlabel("Minor Allele Frequency")
+    plt.ylabel("R2")
+    plt.savefig(os.path.join(output_prefix, f'{type_model}_region_{region}_MAF_R2.png'))
 
 def evaluation(dataloader, model, device):
     '''
@@ -41,7 +57,7 @@ def evaluation(dataloader, model, device):
         labels = []
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
-            # Compute prediction error`
+            # Compute prediction error
             _, prediction = model(X.float())
             y_pred = torch.argmax(prediction, dim=-1).T
             _r2_score += r2_score(
@@ -68,27 +84,12 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
     type_model = args.model_type
     model_dir = args.model_dir
 
-    a1_freq_list_loss = torch.tensor(a1_freq_list.tolist()*batch_size)
     #Init Model
     model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, type_model=type_model).float().to(device)
     model.load_state_dict(torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt')))
     print(f"Loaded {type_model}_{region} model")
     r2_test, predictions, labels = evaluation(dataloader, model, device)
-    bins = 20
-    bins_list = equal_bin(a1_freq_list, bins)
-    pred_bins = [[] for _ in range(bins)]
-    label_bins = [[] for _ in range(bins)]
-    for index, bin in enumerate(bins_list):
-        pred_bins[bin].append(predictions[:, index])
-        label_bins[bin].append(labels[:, index])
-    r2_score_list = []
-    for index in range(bins):
-        y = torch.stack(label_bins[index]).detach().numpy()
-        y_pred = torch.stack(pred_bins[index]).detach().numpy()
-        _r2_score = r2_score(y, y_pred)
-        r2_score_list.append(_r2_score)
-    plt.plot(range(bins), r2_score_list)
-    plt.savefig("images/r2_maf.png")
+    draw_MAF_R2(predictions, labels, a1_freq_list, type_model,   region, bins=20)
     print("Evalutate R2 score:", r2_test)
 
 def main():

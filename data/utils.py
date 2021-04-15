@@ -218,8 +218,11 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
         return [1 - allele, allele]
 
     def convert_maf(a1_freq):
+        if a1_freq == 0.:
+            print("22222222222222")
+            pause = input("PAUSE...")
         if a1_freq > 0.5:
-            return 1. - a1_freq
+            return 1.001 - a1_freq
         return a1_freq
     site_info_dict = {}
     marker_site_count = 0
@@ -330,5 +333,5 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
                 break
     true_haplotype_list = np.reshape(np.array(true_haplotype_list, dtype=np.int), (-1, len(true_haplotype_list)))
     haplotype_list = np.array(haplotype_list, dtype=np.double)
-    a1_freq_list = np.array(a1_freq_list, dtype=np.double)
+    a1_freq_list = np.array(a1_freq_list)
     return haplotype_list, true_haplotype_list, a1_freq_list

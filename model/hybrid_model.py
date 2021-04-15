@@ -18,12 +18,13 @@ class HybridModel(nn.Module):
 
         gammar = 0
         if self.type_model == 'Higher' or self.type_model == 'Lower':
-            gammar = 0.01 if self.type_model == 'Higher' else -0.01
+            gammar = 0.1
+            gammar = gammar if self.type_model == 'Higher' else -gammar
             self.gruModel = GRUModel(model_config, type_model=self.type_model)
         else:
             #TODO
             #Train higher and lower model to get weight models
-            assert True
+            assert False
             self.higherModel = GRUModel(model_config, type_model='Higher')
             self.lowerModel = GRUModel(model_config, type_model='Lower')
 
