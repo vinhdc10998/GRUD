@@ -36,9 +36,10 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     with torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
-            # Compute prediction error`
-            logits, prediction = model(X.float())
             label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
+            
+            # Compute prediction error
+            logits, prediction = model(X.float())
             loss = loss_fn(logits, label[:, 0])
             y_pred = torch.argmax(prediction, dim=-1).T
             _r2_score += r2_score(
@@ -152,7 +153,7 @@ def main():
                         dest='model_config_dir', help='Model config folder')
     parser.add_argument('--model-type', type=str, required=True,
                         dest='model_type', help='Model type')
-    parser.add_argument('--gpu', type=bool, default=False, required=False,
+    parser.add_argument('--gpu', action='store_true',
                         dest='gpu', help='Using GPU')
     parser.add_argument('--batch-size', type=int, default=2, required=False,
                         dest='batch_size', help='Batch size')
@@ -166,7 +167,7 @@ def main():
                         dest='learning_rate', help='Learning rate')
     parser.add_argument('--output-model-dir', type=str, default='model/weights', required=False,
                         dest='output_model_dir', help='Output weights model dir')
-    parser.add_argument('--early-stopping', type=bool, default=True, required=False,
+    parser.add_argument('--early-stopping', action='store_true',
                         dest='early_stopping', help='Early stopping')
 
     args = parser.parse_args()
