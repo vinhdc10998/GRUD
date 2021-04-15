@@ -59,9 +59,10 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
+        label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
+        
         # Compute prediction error
         logits, prediction = model(X.float())
-        label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
         loss = loss_fn(logits, label[:, 0])
         y_pred = torch.argmax(prediction, dim=-1).T
         _r2_score += r2_score(
@@ -112,7 +113,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = nn.CrossEntropyLoss()
     loss_fn = model.CustomCrossEntropyLoss
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, amsgrad=True)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)
     early_stopping = EarlyStopping(patience=10)
 

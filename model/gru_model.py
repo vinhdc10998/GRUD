@@ -16,19 +16,19 @@ class GRUModel(nn.Module):
         self.type_model = type_model
 
         output_features = self.feature_size * 5
-        self.features_1 = nn.Linear(self.input_dim, self.feature_size)
-        self.features_2 = nn.Linear(self.feature_size, output_features)
-        self.features_3 = nn.Linear(output_features, output_features*10)
+        self.features_1 = nn.ModuleList([nn.Linear(self.input_dim, self.feature_size) for _ in range(self.num_inputs)])
+        # self.features_2 = nn.ModuleList([nn.Linear(self.feature_size, output_features) for _ in range(self.num_inputs)])
+        # self.features_3 = nn.ModuleList([nn.Linear(output_features, output_features*10) for _ in range(self.num_inputs)])
         self.tanh = nn.Tanh()
         self.gru = nn.ModuleDict(self._create_gru_cell(
-            output_features*10, 
+            self.feature_size, 
             self.hidden_units, 
             self.num_layers, 
             self.type_model
         ))
         
         self.list_linear = nn.ModuleList(self._create_linear_list(
-            output_features*10,
+            self.feature_size,
             self.hidden_units,
             self.num_layers,
             self.num_classes,
@@ -96,12 +96,12 @@ class GRUModel(nn.Module):
         _input = torch.unbind(x, dim=1)
         gru_inputs = []
         for index in range(self.num_inputs):
-            gru_input = self.features_1(_input[index])
+            gru_input = self.features_1[index](_input[index])
             gru_input = self.tanh(gru_input)
-            gru_input = self.features_2(gru_input)
-            gru_input = self.tanh(gru_input)
-            gru_input = self.features_3(gru_input)
-            gru_input = self.tanh(gru_input)
+            # gru_input = self.features_2[index](gru_input)
+            # gru_input = self.tanh(gru_input)
+            # gru_input = self.features_3[index](gru_input)
+            # gru_input = self.tanh(gru_input)
             gru_inputs.append(gru_input)
 
         

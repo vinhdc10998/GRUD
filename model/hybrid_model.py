@@ -37,7 +37,6 @@ class HybridModel(nn.Module):
         if self.type_model == 'Higher' or self.type_model == 'Lower':
             init_hidden = self.gruModel.init_hidden(batch)
             logits = self.gruModel(input_, init_hidden)
-            # print(torch.stack(logits).shape)
             logit = torch.cat(logits, dim=0)
             pred = self.softmax(torch.stack(logits))
             return logit, pred
