@@ -107,14 +107,14 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     val_loader = dataloader['validation']
 
     #Init Model
-    model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, type_model=type_model).float().to(device)
+    model = HybridModel(model_config, a1_freq_list, device, type_model=type_model).float().to(device)
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss(reduction="sum")
     loss_fn = model.CustomCrossEntropyLoss
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, amsgrad=True)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
     early_stopping = EarlyStopping(patience=10)
 
     _r2_score_list, loss_values = [], [] #train

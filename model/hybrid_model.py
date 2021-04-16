@@ -5,20 +5,16 @@ from torch import nn
 
 TYPE_MODEL = ['Hybrid', 'Higher', 'Lower']
 class HybridModel(nn.Module):
-    def __init__(self,model_config, a1_freq_list, device, batch_size=1, bidir=True, type_model=None):
+    def __init__(self,model_config, a1_freq_list, device, type_model=None):
         super(HybridModel,self).__init__()
         assert type_model in TYPE_MODEL
-        self.input_size = model_config['input_dim']
-        self.hidden_units = model_config['num_units']
         self.num_classes = model_config['num_classes']
         self.num_outputs = model_config['num_outputs']
         self.type_model = type_model
-        self.bidir = bidir
-        self.batch_size = batch_size
 
         gammar = 0
         if self.type_model == 'Higher' or self.type_model == 'Lower':
-            gammar = 0.01
+            gammar = 0.1
             gammar = gammar if self.type_model == 'Higher' else -gammar
             self.gruModel = GRUModel(model_config, type_model=self.type_model)
         else:
@@ -29,7 +25,7 @@ class HybridModel(nn.Module):
             self.lowerModel = GRUModel(model_config, type_model='Lower')
 
         self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, device, gammar)
-        self.softmax = nn.Softmax(dim=2)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input_):
         batch = input_.shape[0]
@@ -38,6 +34,9 @@ class HybridModel(nn.Module):
             init_hidden = self.gruModel.init_hidden(batch)
             logits = self.gruModel(input_, init_hidden)
             logit = torch.cat(logits, dim=0)
-            pred = self.softmax(torch.stack(logits))
+            pred = torch.reshape(
+                self.softmax(logit),
+                shape=[self.num_outputs, -1, self.num_classes]
+            )
             return logit, pred
         return None

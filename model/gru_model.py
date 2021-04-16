@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch import nn
 
@@ -14,12 +15,14 @@ class GRUModel(nn.Module):
         self.output_points_fw = model_config['output_points_fw']
         self.output_points_bw = model_config['output_points_bw']
         self.type_model = type_model
-
+        
         output_features = self.feature_size * 5
-        self.features_1 = nn.ModuleList([nn.Linear(self.input_dim, self.feature_size) for _ in range(self.num_inputs)])
-        # self.features_2 = nn.ModuleList([nn.Linear(self.feature_size, output_features) for _ in range(self.num_inputs)])
-        # self.features_3 = nn.ModuleList([nn.Linear(output_features, output_features*10) for _ in range(self.num_inputs)])
-        self.tanh = nn.Tanh()
+        self._features = torch.tensor(np.load('model/features/region_1_model_Feature_.npy'))
+        self.features_1 = nn.ModuleList([nn.Linear(self.feature_size, output_features) for _ in range(self.num_inputs)])
+        # self.features_1 = nn.Linear(self.feature_size, output_features)
+        self.batch_norm_1 = nn.BatchNorm1d(self.feature_size)
+        self.sigmoid = nn.Sigmoid()
+        self.dropout = nn.Dropout(0.5)
         self.gru = nn.ModuleDict(self._create_gru_cell(
             self.feature_size, 
             self.hidden_units, 
@@ -96,27 +99,24 @@ class GRUModel(nn.Module):
         _input = torch.unbind(x, dim=1)
         gru_inputs = []
         for index in range(self.num_inputs):
-            gru_input = self.features_1[index](_input[index])
-            gru_input = self.tanh(gru_input)
-            # gru_input = self.features_2[index](gru_input)
-            # gru_input = self.tanh(gru_input)
-            # gru_input = self.features_3[index](gru_input)
-            # gru_input = self.tanh(gru_input)
+            gru_input = torch.matmul(_input[index], self._features[index])
+            # gru_input = self.features_1[index](gru_input)
+            gru_input = self.sigmoid(gru_input)
+            gru_input = self.batch_norm_1(gru_input)
+            gru_input = self.dropout(gru_input)
             gru_inputs.append(gru_input)
 
-        
         fw_end = self.output_points_fw[-1]
         bw_start = self.output_points_bw[0]
 
         outputs_fw = [None for _ in range(self.num_inputs)]
         outputs_bw = [None for _ in range(self.num_inputs)]
-
+        
         if fw_end is not None:
             inputs_fw = torch.stack(gru_inputs[: fw_end + 1])
             outputs, _ = self._compute_gru(self.gru['fw'], inputs_fw, hidden)
             for t in range(fw_end + 1):
                 outputs_fw[t] = outputs[t]
-
         if bw_start is not None:
             inputs_bw = torch.stack([
                 gru_inputs[i]
@@ -136,6 +136,7 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs_bw[t_bw])
             gru_output = torch.cat(gru_output, dim=1)
             logit = self.list_linear[index](gru_output)
+            logit = self.sigmoid(logit)
             logit_list.append(logit)
         return logit_list
 
@@ -143,7 +144,7 @@ class GRUModel(nn.Module):
         num_layers = self.num_layers
         if self.type_model == 'Lower':
             num_layers = 1
-        weight = next(self.parameters()).data
+        weight = next(self.gru.parameters()).data
         hidden = weight.new(num_layers, number_of_variants, self.hidden_units).zero_() # self.num_layers*2(bidirection)
         return hidden
     

@@ -14,6 +14,6 @@ class CustomCrossEntropyLoss(nn.Module):
         batch_size = len(target) // len(self.a1_freq_list)
         a1_freq_list = torch.tensor(self.a1_freq_list.tolist()*batch_size)
         maf = ((2*a1_freq_list)**self.gramma).to(self.device)
-        y_true = (maf * target).type(torch.LongTensor)
+        y_true = (maf * target).long().to(self.device)
         loss = nn.NLLLoss().to(self.device)
         return loss(F.log_softmax(pred, dim=1) , y_true)
