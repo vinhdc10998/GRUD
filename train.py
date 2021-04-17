@@ -40,7 +40,7 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
             # Compute prediction error
             logits, prediction = model(X.float())
             loss = loss_fn(logits, label)
-            y_pred = torch.argmax(prediction, dim=2).T
+            y_pred = torch.argmax(prediction, dim=-1).T
             _r2_score += r2_score(
                 y.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
@@ -62,7 +62,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
         # Compute prediction error
         logits, prediction = model(X.float())
         loss = loss_fn(logits, label)
-        y_pred = torch.argmax(prediction, dim=2).T
+        y_pred = torch.argmax(prediction, dim=-1).T
         _r2_score += r2_score(
             y.cpu().detach().numpy(),
             y_pred.cpu().detach().numpy()
@@ -184,6 +184,7 @@ def main():
         print(f"----------Training Region {region}----------")
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
+            model_config['region'] = region
         dataset = RegionDataset(root_dir, region, chromosome)
         train_size = int(0.8 * len(dataset))
         test_size = len(dataset) - train_size
@@ -196,7 +197,8 @@ def main():
             dataloader,
             dataset.a1_freq_list,
             model_config,
-            args, region,
+            args, 
+            region,
             batch_size,
             epochs
         )
