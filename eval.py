@@ -124,6 +124,7 @@ def main():
         print(f"----------Testing Region {region}----------")
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
+            model_config['region'] = region
         dataset = RegionDataset(root_dir, region, chromosome)
         testloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         run(
