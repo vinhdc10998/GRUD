@@ -197,8 +197,7 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
             if position in positions:
                 index_position_info_dict = [i for i,val in enumerate(positions) if val==position]
                 for t in index_position_info_dict:
-                    if items[2] == imp_site_info_list[t].a0\
-                        and items[3] == imp_site_info_list[t].a1:
+                    if items[2] == imp_site_info_list[t].a0 and items[3] == imp_site_info_list[t].a1:
                         hap = linecache.getline(hap_true_file, k).rstrip().split()
                         true_haplotype_list.append(hap) 
                         a1_freq_list.append(convert_maf(imp_site_info_list[t].a1_freq))
@@ -207,7 +206,7 @@ def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_
                 with open(index_start, "w+") as index_file:
                     start_index = index_file.write(str(k))
                 break
-    true_haplotype_list = np.reshape(np.array(true_haplotype_list, dtype=np.int), (-1, len(true_haplotype_list)))
-    haplotype_list = np.array(haplotype_list, dtype=np.double)
+    true_haplotype_list = np.array(true_haplotype_list, dtype=np.int).T
+    haplotype_list = np.array(haplotype_list)
     a1_freq_list = np.array(a1_freq_list)
     return haplotype_list, true_haplotype_list, a1_freq_list

@@ -36,12 +36,11 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     with torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
-            label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
-            
+            label = torch.flatten(y.T)
             # Compute prediction error
             logits, prediction = model(X.float())
-            loss = loss_fn(logits, label[:, 0])
-            y_pred = torch.argmax(prediction, dim=-1).T
+            loss = loss_fn(logits, label)
+            y_pred = torch.argmax(prediction, dim=2).T
             _r2_score += r2_score(
                 y.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
@@ -59,12 +58,11 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
-        label = torch.reshape(y.T, (y.shape[0]*y.shape[1], -1)).long()
-        
+        label = torch.flatten(y.T)
         # Compute prediction error
         logits, prediction = model(X.float())
-        loss = loss_fn(logits, label[:, 0])
-        y_pred = torch.argmax(prediction, dim=-1).T
+        loss = loss_fn(logits, label)
+        y_pred = torch.argmax(prediction, dim=2).T
         _r2_score += r2_score(
             y.cpu().detach().numpy(),
             y_pred.cpu().detach().numpy()
@@ -111,7 +109,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
-    loss_fn = nn.CrossEntropyLoss(reduction="sum")
+    # loss_fn = nn.CrossEntropyLoss(reduction="sum")
     loss_fn = model.CustomCrossEntropyLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)

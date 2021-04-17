@@ -85,7 +85,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
     model_dir = args.model_dir
 
     #Init Model
-    model = HybridModel(model_config, a1_freq_list, device, batch_size=batch_size, type_model=type_model).float().to(device)
+    model = HybridModel(model_config, a1_freq_list, device, type_model=type_model).float().to(device)
     model.load_state_dict(torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt')))
     print(f"Loaded {type_model}_{region} model")
     r2_test, predictions, labels = evaluation(dataloader, model, device)

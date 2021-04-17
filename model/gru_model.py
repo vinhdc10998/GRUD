@@ -16,22 +16,21 @@ class GRUModel(nn.Module):
         self.output_points_bw = model_config['output_points_bw']
         self.type_model = type_model
         
-        output_features = self.feature_size * 5
-        self._features = torch.tensor(np.load('model/features/region_1_model_Feature_.npy'))
-        self.features_1 = nn.ModuleList([nn.Linear(self.feature_size, output_features) for _ in range(self.num_inputs)])
-        # self.features_1 = nn.Linear(self.feature_size, output_features)
-        self.batch_norm_1 = nn.BatchNorm1d(self.feature_size)
+        output_features = self.feature_size
+        # self._features = torch.tensor(np.load('model/features/region_1_model_Feature_.npy'))
+        self.features_1 = nn.ModuleList([nn.Linear(self.input_dim, output_features) for _ in range(self.num_inputs)])
+        self.batch_norm_1 = nn.BatchNorm1d(output_features)
         self.sigmoid = nn.Sigmoid()
-        self.dropout = nn.Dropout(0.5)
+
         self.gru = nn.ModuleDict(self._create_gru_cell(
-            self.feature_size, 
+            output_features, 
             self.hidden_units, 
             self.num_layers, 
             self.type_model
         ))
         
         self.list_linear = nn.ModuleList(self._create_linear_list(
-            self.feature_size,
+            output_features,
             self.hidden_units,
             self.num_layers,
             self.num_classes,
@@ -99,11 +98,10 @@ class GRUModel(nn.Module):
         _input = torch.unbind(x, dim=1)
         gru_inputs = []
         for index in range(self.num_inputs):
-            gru_input = torch.matmul(_input[index], self._features[index])
-            # gru_input = self.features_1[index](gru_input)
+            # gru_input = torch.matmul(_input[index], self._features[index])
+            gru_input = self.features_1[index](_input[index])
             gru_input = self.sigmoid(gru_input)
             gru_input = self.batch_norm_1(gru_input)
-            gru_input = self.dropout(gru_input)
             gru_inputs.append(gru_input)
 
         fw_end = self.output_points_fw[-1]
@@ -140,11 +138,11 @@ class GRUModel(nn.Module):
             logit_list.append(logit)
         return logit_list
 
-    def init_hidden(self, number_of_variants):
+    def init_hidden(self, batch):
         num_layers = self.num_layers
         if self.type_model == 'Lower':
             num_layers = 1
         weight = next(self.gru.parameters()).data
-        hidden = weight.new(num_layers, number_of_variants, self.hidden_units).zero_() # self.num_layers*2(bidirection)
+        hidden = weight.new(num_layers, batch, self.hidden_units).zero_() # self.num_layers*2(bidirection)
         return hidden
     
