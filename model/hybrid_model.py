@@ -14,7 +14,7 @@ class HybridModel(nn.Module):
 
         gammar = 0
         if self.type_model == 'Higher' or self.type_model == 'Lower':
-            gammar = 0.1
+            gammar = 0.01
             gammar = gammar if self.type_model == 'Higher' else -gammar
             self.gruModel = GRUModel(model_config, type_model=self.type_model)
         else:
