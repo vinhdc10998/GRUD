@@ -25,7 +25,7 @@ class HybridModel(nn.Module):
             self.lowerModel = GRUModel(model_config, type_model='Lower')
 
         self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, device, gammar)
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, input_):
         batch = input_.shape[0]
@@ -34,9 +34,6 @@ class HybridModel(nn.Module):
             init_hidden = self.gruModel.init_hidden(batch)
             logits = self.gruModel(input_, init_hidden)
             logit = torch.cat(logits, dim=0)
-            pred = torch.reshape(
-                self.softmax(logit),
-                shape=[self.num_outputs, -1, self.num_classes]
-            )
+            pred = self.softmax(torch.stack(logits))
             return logit, pred
         return None
