@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 import os
 import numpy as np
-from .utils import load_site_info, load_data
+from .load_data import load_site_info, load_dataset
 from torch.utils.data import Dataset
 
 class RegionDataset(Dataset):
@@ -15,7 +15,7 @@ class RegionDataset(Dataset):
 
         self.site_info_list = load_site_info(panel_dir)
         self.haplotype_list, self.label_haplotype_list, self.a1_freq_list =\
-            load_data(hap_dir, legend_dir, label_hap_dir, label_legend_dir, self.site_info_list, index_start)
+            load_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir, self.site_info_list, index_start)
         print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape, self.a1_freq_list.shape)
     
     def __len__(self):

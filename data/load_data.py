@@ -89,7 +89,7 @@ def load_lines(filename,header=False):
             
     return header_line, np.array(lines)
 
-def load_data(hap_file, legend_file, hap_true_file, legend_true_file, site_info_list, index_start):
+def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_info_list, index_start):
     def one_hot(allele, a1_freq):
         if allele is None:
             return [1.0 - a1_freq, a1_freq]

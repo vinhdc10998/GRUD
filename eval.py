@@ -1,50 +1,12 @@
 import os
 import json
 import torch
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-from argparse import ArgumentParser
 from sklearn.metrics import r2_score
 from model.hybrid_model import HybridModel
 from data.dataset import RegionDataset
 from torch.utils.data import DataLoader
+from utils import argument_parser, imputation, plot_chart
 torch.manual_seed(42)
-
-def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region):
-    fig, axs = plt.subplots(2, 2)
-    fig.suptitle(f'Region {region}')
-    axs[0,0].set_title("Training Loss")
-    axs[0,0].plot(train_loss)
-    axs[1,0].set_title("Training R2 score")
-    axs[1,0].plot(train_r2_score)
-    axs[0,1].set_title("Validation Loss")
-    axs[0,1].plot(val_loss)
-    axs[1,1].set_title("Validation R2 score")
-    axs[1,1].plot(val_r2_score)
-    fig.tight_layout()
-    plt.savefig(f"images/region_{region}.png")
-
-def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_prefix = 'images'):
-    bins_list = pd.cut(a1_freq_list, bins, labels=range(bins))  
-    pred_bins = [[] for _ in range(bins)]
-    label_bins = [[] for _ in range(bins)]
-    for index, bin in enumerate(bins_list):
-        pred_bins[bin].append(pred[:, index])
-        label_bins[bin].append(label[:, index])
-    r2_score_list = []
-    for index in range(bins):
-        y = torch.stack(label_bins[index]).detach().numpy()
-        y_pred = torch.stack(pred_bins[index]).detach().numpy()
-        _r2_score = r2_score(y, y_pred)
-        r2_score_list.append(_r2_score)
-
-    x_axis = np.unique(pd.cut(a1_freq_list, bins, labels=np.linspace(start=0, stop=0.5, num=bins)))
-    plt.plot(x_axis, r2_score_list)
-    plt.grid(linestyle='--')
-    plt.xlabel("Minor Allele Frequency")
-    plt.ylabel("R2")
-    plt.savefig(os.path.join(output_prefix, f'{type_model}_region_{region}_MAF_R2.png'))
 
 def evaluation(dataloader, model, device):
     '''
@@ -72,15 +34,7 @@ def evaluation(dataloader, model, device):
     return _r2_score, predictions, labels
 
 def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
-    if args.gpu == True:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        if device == 'cpu': 
-            print("You don't have GPU to impute genotype, so I will run by CPU")
-        else:
-            print(f"You're using GPU {torch.cuda.get_device_name(0)} to impute genotype")
-    else: 
-        device = 'cpu'
-        print("You're using CPU to impute genotype")
+    device = imputation._get_device(args.gpu)
     type_model = args.model_type
     model_dir = args.model_dir
 
@@ -89,30 +43,11 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1):
     model.load_state_dict(torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt')))
     print(f"Loaded {type_model}_{region} model")
     r2_test, predictions, labels = evaluation(dataloader, model, device)
-    draw_MAF_R2(predictions, labels, a1_freq_list, type_model,   region, bins=20)
+    plot_chart._draw_MAF_R2(predictions, labels, a1_freq_list, type_model,   region, bins=20)
     print("Evalutate R2 score:", r2_test)
 
 def main():
-    description = 'Genotype Imputation'
-    parser = ArgumentParser(description=description, add_help=False)
-    parser.add_argument('--root-dir', type=str, required=True,
-                        dest='root_dir', help='Data folder')
-    parser.add_argument('--model-config-dir', type=str, required=True,
-                        dest='model_config_dir', help='Model config folder')
-    parser.add_argument('--model-type', type=str, required=True,
-                        dest='model_type', help='Model type')
-    parser.add_argument('--gpu', action='store_true',
-                        dest='gpu', help='Using GPU')
-    parser.add_argument('--batch-size', type=int, default=2, required=False,
-                        dest='batch_size', help='Batch size')
-    parser.add_argument('--regions', type=str, default=1, required=False,
-                        dest='regions', help='Region range')
-    parser.add_argument('--chr', type=str, default='chr22', required=False,
-                        dest='chromosome', help='Chromosome')
-    parser.add_argument('--model-dir', type=str, default='model/weights', required=True,
-                        dest='model_dir', help='Weights model dir')
-    args = parser.parse_args()
-
+    args = argument_parser._get_argument()
     root_dir = args.root_dir
     model_config_dir = args.model_config_dir
     batch_size = args.batch_size

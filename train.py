@@ -1,29 +1,12 @@
 import os
 import json
 import torch
-import matplotlib.pyplot as plt
-from argparse import ArgumentParser
-from sklearn.metrics import r2_score
 from model.hybrid_model import HybridModel
 from model.early_stopping import EarlyStopping
 from data.dataset import RegionDataset
-from torch import nn
 from torch.utils.data import DataLoader
+from utils import imputation, plot_chart, argument_parser
 torch.manual_seed(42)
-
-def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type_model):
-    fig, axs = plt.subplots(2, 2)
-    fig.suptitle(f'Region {region}')
-    axs[0,0].set_title("Training Loss")
-    axs[0,0].plot(train_loss)
-    axs[1,0].set_title("Training R2 score")
-    axs[1,0].plot(train_r2_score)
-    axs[0,1].set_title("Validation Loss")
-    axs[0,1].plot(val_loss)
-    axs[1,1].set_title("Validation R2 score")
-    axs[1,1].plot(val_r2_score)
-    fig.tight_layout()
-    plt.savefig(f"images/{type_model}_region_{region}.png")
 
 def evaluation(dataloader, model, device, loss_fn, is_train=True):
     '''
@@ -36,15 +19,7 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     with torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
-            label = torch.flatten(y.T)
-            # Compute prediction error
-            logits, prediction = model(X.float())
-            loss = loss_fn(logits, label)
-            y_pred = torch.argmax(prediction, dim=-1).T
-            _r2_score += r2_score(
-                y.cpu().detach().numpy(),
-                y_pred.cpu().detach().numpy()
-            )
+            loss, _r2_score = imputation._calc_loss_r2(X, y, model, loss_fn, _r2_score)
             test_loss += loss.item()
 
     test_loss /= batch+1
@@ -52,51 +27,29 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     return test_loss, _r2_score
 
 def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=True):
+    '''
+        Train model GRU
+    '''
     if is_train:
         model.train()
     _r2_score = 0
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
-        label = torch.flatten(y.T)
-        # Compute prediction error
-        logits, prediction = model(X.float())
-        loss = loss_fn(logits, label)
-        y_pred = torch.argmax(prediction, dim=-1).T
-        _r2_score += r2_score(
-            y.cpu().detach().numpy(),
-            y_pred.cpu().detach().numpy()
-        )
+        loss, _r2_score = imputation._calc_loss_r2(X, y, model, loss_fn, _r2_score)
+        train_loss += loss.item()
         #Backpropagation
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         scheduler.step()
 
-        train_loss += loss.item()
     _r2_score /= batch+1
     train_loss /= batch+1
     return train_loss, _r2_score
 
-def save_model(model, region, type_model, path, best=False):
-    if not os.path.exists(path):
-        os.mkdir(path)
-    filename = os.path.join(path, f'{type_model}_region_{region}.pt')
-    if best == True:
-        filename = os.path.join(path, f'Best_{type_model}_region_{region}.pt')
-    torch.save(model.state_dict(), filename)
-
-
 def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epochs=200):
-    if args.gpu == True:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        if device == 'cpu': 
-            print("You don't have GPU to impute genotype, so I will run by CPU")
-        else:
-            print(f"You're using GPU {torch.cuda.get_device_name(0)} to impute genotype")
-    else: 
-        device = 'cpu'
-        print("You're using CPU to impute genotype")
+    device = imputation._get_device(args.gpu)
     type_model = args.model_type
     lr = args.learning_rate
     output_model_dir = args.output_model_dir
@@ -109,7 +62,6 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
-    # loss_fn = nn.CrossEntropyLoss(reduction="sum")
     loss_fn = model.CustomCrossEntropyLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
@@ -132,7 +84,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
         if r2_test > best_test_r2:
             best_test_r2 = r2_test
             best_epochs = t+1
-            save_model(model, region, type_model, output_model_dir, best=True)
+            imputation._save_model(model, region, type_model, output_model_dir, best=True)
 
         #Early stopping
         if args.early_stopping:
@@ -140,37 +92,11 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
             if early_stopping.early_stop:
                 break
     print(f"Best model at epochs {best_epochs} with R2 score: {best_test_r2}")
-    draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region, type_model)
-    save_model(model, region, type_model, output_model_dir)
+    plot_chart._draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region, type_model)
+    imputation._save_model(model, region, type_model, output_model_dir)
 
 def main():
-    description = 'Genotype Imputation'
-    parser = ArgumentParser(description=description, add_help=False)
-    parser.add_argument('--root-dir', type=str, required=True,
-                        dest='root_dir', help='Data folder')
-    parser.add_argument('--model-config-dir', type=str, required=True,
-                        dest='model_config_dir', help='Model config folder')
-    parser.add_argument('--model-type', type=str, required=True,
-                        dest='model_type', help='Model type')
-    parser.add_argument('--gpu', action='store_true',
-                        dest='gpu', help='Using GPU')
-    parser.add_argument('--batch-size', type=int, default=2, required=False,
-                        dest='batch_size', help='Batch size')
-    parser.add_argument('--epochs', type=int, default=200, required=False,
-                        dest='epochs', help='Epochs')
-    parser.add_argument('--regions', type=str, default=1, required=False,
-                        dest='regions', help='Region range')
-    parser.add_argument('--chr', type=str, default='chr22', required=False,
-                        dest='chromosome', help='Chromosome')
-    parser.add_argument('--lr', type=float, default=1e-4, required=False,
-                        dest='learning_rate', help='Learning rate')
-    parser.add_argument('--output-model-dir', type=str, default='model/weights', required=False,
-                        dest='output_model_dir', help='Output weights model dir')
-    parser.add_argument('--early-stopping', action='store_true',
-                        dest='early_stopping', help='Early stopping')
-
-    args = parser.parse_args()
-
+    args = argument_parser._get_argument()
     root_dir = args.root_dir
     model_config_dir = args.model_config_dir
     batch_size = args.batch_size
