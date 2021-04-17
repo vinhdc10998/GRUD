@@ -71,7 +71,6 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     r2_test_list, test_loss_list = [], [] #validation
     best_test_r2 = -99999999
     for t in range(epochs):
-        # print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}")
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
         test_loss, r2_test = evaluation(val_loader, model, device, loss_fn)
         loss_values.append(train_loss)

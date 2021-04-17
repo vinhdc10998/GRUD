@@ -5,7 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
-def _draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type_model):
+def _draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type_model, output_prefix = 'images'):
+    if not os.path.exists(output_prefix):
+        os.mkdir(output_prefix)
     fig, axs = plt.subplots(2, 2)
     fig.suptitle(f'Region {region}')
     axs[0,0].set_title("Training Loss")
@@ -20,6 +22,8 @@ def _draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type
     plt.savefig(f"images/{type_model}_region_{region}.png")
 
 def _draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_prefix = 'images'):
+    if not os.path.exists(output_prefix):
+        os.mkdir(output_prefix)
     bins_list = pd.cut(a1_freq_list, bins, labels=range(bins))  
     pred_bins = [[] for _ in range(bins)]
     label_bins = [[] for _ in range(bins)]
