@@ -3,7 +3,7 @@ import torch
 from torch import nn
 
 class GRUModel(nn.Module):
-    def __init__(self, model_config, type_model):
+    def __init__(self, model_config, device, type_model):
         super(GRUModel,self).__init__()
         self.input_dim = model_config['input_dim']
         self.hidden_units = model_config['num_units']
@@ -16,8 +16,8 @@ class GRUModel(nn.Module):
         self.output_points_bw = model_config['output_points_bw']
         self.region = model_config['region']
         self.type_model = type_model
+        self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(device)
         # output_features = self.feature_size*10
-        self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy'))
         # self.features_1 = nn.ModuleList([nn.Linear(self.feature_size, output_features) for _ in range(self.num_inputs)])
         # self.features_1 = nn.Linear(self.feature_size, output_features)
         # self.batch_norm_1 = nn.BatchNorm1d(output_features)

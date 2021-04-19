@@ -27,5 +27,7 @@ def _get_argument():
                         dest='early_stopping', help='Early stopping')
     parser.add_argument('--model-dir', type=str, default='model/weights', required=False,
                         dest='model_dir', help='Weights model dir')
+    parser.add_argument('--result-gen-dir', type=str, default='results/', required=False,
+                        dest='result_gen_dir', help='result gen dir')
     args = parser.parse_args()
     return args

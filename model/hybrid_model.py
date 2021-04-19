@@ -14,15 +14,15 @@ class HybridModel(nn.Module):
 
         gammar = 0
         if self.type_model == 'Higher' or self.type_model == 'Lower':
-            gammar = 0.1
+            gammar = 0.01
             gammar = gammar if self.type_model == 'Higher' else -gammar
-            self.gruModel = GRUModel(model_config, type_model=self.type_model)
+            self.gruModel = GRUModel(model_config, device, type_model=self.type_model)
         else:
             #TODO
             #Train higher and lower model to get weight models
             assert False
-            self.higherModel = GRUModel(model_config, type_model='Higher')
-            self.lowerModel = GRUModel(model_config, type_model='Lower')
+            self.higherModel = GRUModel(model_config, device, type_model='Higher')
+            self.lowerModel = GRUModel(model_config, device, type_model='Lower')
 
         self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, device, gammar)
         self.softmax = nn.Softmax(dim=-1)

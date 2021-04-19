@@ -1,6 +1,7 @@
 import os
 import torch
 from sklearn.metrics import r2_score
+from data.load_data import *
 
 def _calc_loss_r2(x, y, model, loss_fn, r2):
     label = torch.flatten(y.T)
@@ -33,3 +34,26 @@ def _get_device(gpu=False):
         device = 'cpu'
         print("You're using CPU to impute genotype")
     return device
+
+def _write_gen(predictions, imp_site_info_list, chr, region, type_model, output_prefix):
+    output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}.gen")
+    mkdir(os.path.dirname(output_prefix))
+    with open(output_prefix, 'wt') as fp:
+        for allele_probs, site_info in zip(predictions.T, imp_site_info_list):
+            line = '--- %s %s %s %s ' \
+                   % (site_info.id, site_info.position,
+                      site_info.a0, site_info.a1)
+            line += ' '.join([str(allele) for allele in allele_probs.tolist()])
+            fp.write(line)
+            fp.write('\n')
+
+def _merge_gen(folder_dir, type_model, chr):
+    print("DEBUG", folder_dir, os.path.join(folder_dir, f"{type_model}_{chr}.gen"))
+    gen = os.path.join(folder_dir, f"{type_model}_{chr}.gen")
+    mkdir(os.path.dirname(gen))
+    with open(gen, 'w+') as mergered_gen:
+        for gen in os.listdir(folder_dir):
+            if len(gen.split("_")) == 3:
+                with open(os.path.join(folder_dir, gen), 'r') as genfile:
+                    mergered_gen.write(genfile.read())
+            
