@@ -3,7 +3,10 @@
 __pycache__/
 **/__pycache__
 .vscode/
+
+#Folder
 images/
+results/
 
 #weights model
 model/weights/

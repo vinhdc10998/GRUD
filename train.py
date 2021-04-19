@@ -48,7 +48,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
     train_loss /= batch+1
     return train_loss, _r2_score
 
-def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epochs=200):
+def run(dataloader, a1_freq_list, model_config, args, region, epochs=200):
     device = imputation._get_device(args.gpu)
     type_model = args.model_type
     lr = args.learning_rate
@@ -64,7 +64,7 @@ def run(dataloader, a1_freq_list, model_config, args, region, batch_size=1, epoc
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = model.CustomCrossEntropyLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=400, gamma=0.5)
     early_stopping = EarlyStopping(patience=10)
 
     _r2_score_list, loss_values = [], [] #train
@@ -124,7 +124,6 @@ def main():
             model_config,
             args, 
             region,
-            batch_size,
             epochs
         )
 
