@@ -43,7 +43,7 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     a1_freq_list = dataset.a1_freq_list
     #Init Model
     model = HybridModel(model_config, a1_freq_list, device, type_model=type_model).float().to(device)
-    model.load_state_dict(torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt')))
+    model.load_state_dict(torch.load(os.path.join(model_dir, f'{type_model}_region_{region}.pt')))
     print(f"Loaded {type_model}_{region} model")
     r2_test, predictions, labels = evaluation(dataloader, model, device)
     imputation._write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
@@ -60,8 +60,9 @@ def main():
     with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
         index_file.write("0")
     
+    check_gen = False
     gen_file = os.path.join(args.result_gen_dir, f"{args.model_type}_{chromosome}.gen")
-    if os.path.exists(gen_file):
+    if os.path.exists(gen_file) and check_gen:
         label_haplotype = []
         predictions = []
         a1_freq_list = []
