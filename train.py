@@ -110,6 +110,9 @@ def main():
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
             model_config['region'] = region
+            if args.model_type == 'Hybrid':
+                model_config['higher_path'] = os.path.join(args.model_dir, f'Higher_region_{region}.pt')
+                model_config['lower_path'] = os.path.join(args.model_dir, f'Lower_region_{region}.pt')
         dataset = RegionDataset(root_dir, region, chromosome)
         train_size = int(0.8 * len(dataset))
         test_size = len(dataset) - train_size
