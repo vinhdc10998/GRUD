@@ -62,5 +62,4 @@ class HybridModel(nn.Module):
         logit = torch.cat(logit_list, dim=0)
         pred = self.softmax(torch.stack(logit_list))
         return logit, pred
-
     
