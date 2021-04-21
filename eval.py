@@ -23,10 +23,15 @@ def evaluation(dataloader, model, device):
             # Compute prediction error
             _, prediction = model(X.float())
             y_pred = torch.argmax(prediction, dim=-1).T
+            for i in range(0, len(y),2):
+                y_tmp = y[i] + y[i+1]
+                y_pred_tmp = y_pred[i] + y_pred[i+1]
+            # print(np.array(y_tmp))
             _r2_score += r2_score(
-                y.cpu().detach().numpy(),
-                y_pred.cpu().detach().numpy()
+                y_tmp.cpu().detach().numpy(),
+                y_pred_tmp.cpu().detach().numpy()
             )
+            # pause = input("PAUSE...")
             predictions.append(y_pred)
             labels.append(y)
     predictions = torch.cat(predictions, dim=0)
@@ -43,7 +48,7 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     a1_freq_list = dataset.a1_freq_list
     #Init Model
     model = HybridModel(model_config, a1_freq_list, device, type_model=type_model).float().to(device)
-    model.load_state_dict(torch.load(os.path.join(model_dir, f'{type_model}_region_{region}.pt'),map_location=torch.device(device)))
+    model.load_state_dict(torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt'),map_location=torch.device(device)))
     print(f"Loaded {type_model}_{region} model")
     r2_test, predictions, labels = evaluation(dataloader, model, device)
     imputation._write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
@@ -69,7 +74,10 @@ def main():
         for region in range(int(regions[0]), int(regions[-1])+1):
             print(f"----------Get True Label Region {region}----------")
             dataset = RegionDataset(root_dir, region, chromosome)
-            label_haplotype.append(dataset.label_haplotype_list)
+            gen = []
+            for hap in range(0, len(dataset.label_haplotype_list), 2):
+                gen.append(dataset.label_haplotype_list[hap] + dataset.label_haplotype_list[hap+1])
+            label_haplotype.append(gen)
             a1_freq_list.append(dataset.a1_freq_list)
         label_haplotype = np.concatenate(label_haplotype, axis=1)
         a1_freq_list = np.concatenate(a1_freq_list)
@@ -79,13 +87,14 @@ def main():
                 items = line.rstrip().split()
                 hap = items[5:]
                 predictions.append(hap)
+        print(np.array(predictions).shape)
         predictions = np.array(predictions, dtype=np.int).T
-        print(label_haplotype.shape, predictions.shape)
+        print(label_haplotype.shape, predictions.shape, a1_freq_list.shape)
         _r2_score = r2_score(
             label_haplotype,
             predictions
         )
-        plot_chart._draw_MAF_R2(torch.tensor(predictions), torch.tensor(label_haplotype), a1_freq_list, args.model_type, args.regions, bins=20)
+        plot_chart._draw_MAF_R2(torch.tensor(predictions), torch.tensor(label_haplotype), a1_freq_list, args.model_type, args.regions, bins=5)
         print("Evalutate R2 score:", _r2_score)
     else:
         for region in range(int(regions[0]), int(regions[-1])+1):
@@ -93,6 +102,9 @@ def main():
             with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
                 model_config = json.load(json_config)
                 model_config['region'] = region
+                if args.model_type == 'Hybrid':
+                    model_config['higher_path'] = os.path.join(args.model_dir, f'Higher_region_{region}.pt')
+                    model_config['lower_path'] = os.path.join(args.model_dir, f'Lower_region_{region}.pt')
             dataset = RegionDataset(root_dir, region, chromosome)
             testloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
             imp_site_info_list = [

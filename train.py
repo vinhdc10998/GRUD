@@ -64,9 +64,10 @@ def run(dataloader, a1_freq_list, model_config, args, region, epochs=200):
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = model.CustomCrossEntropyLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
     early_stopping = EarlyStopping(patience=10)
 
+    #Start train
     _r2_score_list, loss_values = [], [] #train
     r2_test_list, test_loss_list = [], [] #validation
     best_test_r2 = -99999999
@@ -118,8 +119,8 @@ def main():
         test_size = len(dataset) - train_size
         train_set, val_set = torch.utils.data.random_split(dataset, [train_size, test_size])
         print("[Train - Test]:", len(train_set), len(val_set))
-        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         dataloader = {'train': train_loader, 'validation': val_loader}
         run(
             dataloader,

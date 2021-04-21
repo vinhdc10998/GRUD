@@ -20,7 +20,6 @@ class HybridModel(nn.Module):
         else:
             #TODO
             #Train higher and lower model to get weight models
-            # assert False
             self.higherModel = GRUModel(model_config, device, type_model='Higher')
             self.lowerModel = GRUModel(model_config, device, type_model='Lower')
             self.lowerModel.load_state_dict(self.get_gru_layer(model_config['lower_path'], device))
@@ -30,6 +29,8 @@ class HybridModel(nn.Module):
             for param in self.higherModel.parameters():
                 param.requires_grad = False
             self.linear = nn.ModuleList([nn.Linear(self.num_classes*2, self.num_classes) for _ in range(self.num_outputs)])
+            # self.linear = nn.Linear(self.num_classes*2, self.num_classes)
+
         self.CustomCrossEntropyLoss = CustomCrossEntropyLoss(a1_freq_list, device, gammar)
         self.softmax = nn.Softmax(dim=-1)
 
@@ -51,14 +52,16 @@ class HybridModel(nn.Module):
             logit_list = self.gruModel(input_, init_hidden)
         else:
             init_hidden_higher = self.higherModel.init_hidden(batch)
-            init_hidden_lower = self.lowerModel.init_hidden(batch)
             logits_1 = self.higherModel(input_, init_hidden_higher)
+            
+            init_hidden_lower = self.lowerModel.init_hidden(batch)
             logits_2 = self.lowerModel(input_, init_hidden_lower)
             logits = torch.cat((torch.stack(logits_1), torch.stack(logits_2)), dim=-1)
             logit_list = []
             for index, logit in enumerate(logits):
                 tmp = self.linear[index](logit)
                 logit_list.append(tmp)
+                
         logit = torch.cat(logit_list, dim=0)
         pred = self.softmax(torch.stack(logit_list))
         return logit, pred
