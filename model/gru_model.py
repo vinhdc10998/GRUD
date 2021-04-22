@@ -16,9 +16,9 @@ class GRUModel(nn.Module):
         self.output_points_bw = model_config['output_points_bw']
         self.region = model_config['region']
         self.type_model = type_model
-        self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(device)
+        # self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(device)
+
         output_features = self.feature_size
-        # self.features_1 = nn.ModuleList([nn.Linear(self.feature_size, output_features) for _ in range(self.num_inputs)])
         self.features_1 = nn.Linear(self.num_classes, output_features)
         self.batch_norm_1 = nn.BatchNorm1d(output_features)
         self.batch_norm_2 = nn.BatchNorm1d(self.num_classes)
@@ -100,7 +100,6 @@ class GRUModel(nn.Module):
         _input = torch.unbind(x, dim=1)
         gru_inputs = []
         for index in range(self.num_inputs):
-            # gru_input = torch.matmul(_input[index],S self._features[index])
             gru_input = self.features_1(_input[index])
             gru_input = self.sigmoid(gru_input)
             gru_input = self.batch_norm_1(gru_input)
@@ -137,7 +136,7 @@ class GRUModel(nn.Module):
             gru_output = torch.cat(gru_output, dim=1)
             logit = self.list_linear[index](gru_output)
             logit = self.sigmoid(logit)
-            logit = self.batch_norm_2(logit)
+            # logit = self.batch_norm_2(logit)
             logit_list.append(logit)
         return logit_list
 
