@@ -18,7 +18,7 @@ class GRUModel(nn.Module):
         self.type_model = type_model
         # self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(device)
 
-        output_features = self.feature_size
+        output_features = self.feature_size*5
         self.features_1 = nn.Linear(self.num_classes, output_features)
         self.batch_norm_1 = nn.BatchNorm1d(output_features)
         self.batch_norm_2 = nn.BatchNorm1d(self.num_classes)
@@ -101,8 +101,8 @@ class GRUModel(nn.Module):
         gru_inputs = []
         for index in range(self.num_inputs):
             gru_input = self.features_1(_input[index])
-            gru_input = self.sigmoid(gru_input)
             gru_input = self.batch_norm_1(gru_input)
+            # gru_input = self.sigmoid(gru_input)
             gru_inputs.append(gru_input)
 
         fw_end = self.output_points_fw[-1]
@@ -135,8 +135,8 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs_bw[t_bw])
             gru_output = torch.cat(gru_output, dim=1)
             logit = self.list_linear[index](gru_output)
-            logit = self.sigmoid(logit)
             # logit = self.batch_norm_2(logit)
+            logit = self.sigmoid(logit)
             logit_list.append(logit)
         return logit_list
 
