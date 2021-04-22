@@ -106,7 +106,7 @@ def main():
                     model_config['higher_path'] = os.path.join(args.model_dir, f'Higher_region_{region}.pt')
                     model_config['lower_path'] = os.path.join(args.model_dir, f'Lower_region_{region}.pt')
             dataset = RegionDataset(root_dir, region, chromosome)
-            testloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+            testloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
             imp_site_info_list = [
                 site_info
                 for site_info in dataset.site_info_list if not site_info.array_marker_flag
