@@ -119,8 +119,8 @@ def main():
         test_size = len(dataset) - train_size
         train_set, val_set = torch.utils.data.random_split(dataset, [train_size, test_size])
         print("[Train - Test]:", len(train_set), len(val_set))
-        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
-        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
         dataloader = {'train': train_loader, 'validation': val_loader}
         run(
             dataloader,

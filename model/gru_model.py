@@ -22,7 +22,6 @@ class GRUModel(nn.Module):
         self.features_1 = nn.Linear(self.num_classes, output_features)
         self.batch_norm_1 = nn.BatchNorm1d(output_features)
         self.batch_norm_2 = nn.BatchNorm1d(self.num_classes)
-
         self.sigmoid = nn.Sigmoid()
 
         self.gru = nn.ModuleDict(self._create_gru_cell(

@@ -9,12 +9,12 @@ def _calc_loss_r2(x, y, model, loss_fn, r2):
     logits, prediction = model(x.float())
     loss = loss_fn(logits, label)
     y_pred = torch.argmax(prediction, dim=-1).T
-    for i in range(0, len(y),2):
-        y_tmp = y[i] + y[i+1]
-        y_pred_tmp = y_pred[i] + y_pred[i+1]
+    # for i in range(0, len(y),2):
+    #     y_tmp = y[i] + y[i+1]
+    #     y_pred_tmp = y_pred[i] + y_pred[i+1]
     r2 += r2_score(
-        y_tmp.cpu().detach().numpy(),
-        y_pred_tmp.cpu().detach().numpy()
+        y.cpu().detach().numpy(),
+        y_pred.cpu().detach().numpy()
     )
     return loss, r2
 
