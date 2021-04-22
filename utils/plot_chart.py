@@ -42,4 +42,5 @@ def _draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_
     plt.grid(linestyle='--')
     plt.xlabel("Minor Allele Frequency")
     plt.ylabel("R2")
+    plt.ylim(0.65, 1)
     plt.savefig(os.path.join(output_prefix, f'{type_model}_region_{region}_MAF_R2.png'))

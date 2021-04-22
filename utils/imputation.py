@@ -8,7 +8,8 @@ def _calc_loss_r2(x, y, model, loss_fn, r2):
     # Compute prediction error
     logits, prediction = model(x.float())
     loss = loss_fn(logits, label)
-    y_pred = torch.argmax(prediction, dim=-1).T
+    y = torch.flatten(y)
+    y_pred = torch.flatten(torch.argmax(prediction, dim=-1).T)
     r2 += r2_score(
         y.cpu().detach().numpy(),
         y_pred.cpu().detach().numpy()
