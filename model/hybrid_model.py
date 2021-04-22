@@ -18,8 +18,10 @@ class HybridModel(nn.Module):
             gammar = gammar if self.type_model == 'Higher' else -gammar
             self.gruModel = GRUModel(model_config, device, type_model=self.type_model)
         else:
-            #TODO
-            #Train higher and lower model to get weight models
+            '''
+            TODO
+            Train higher and lower model to get weight models
+            '''
             self.higherModel = GRUModel(model_config, device, type_model='Higher')
             self.lowerModel = GRUModel(model_config, device, type_model='Lower')
             if self.train:
@@ -54,7 +56,6 @@ class HybridModel(nn.Module):
         else:
             init_hidden_higher = self.higherModel.init_hidden(batch)
             logits_1 = self.higherModel(input_, init_hidden_higher)
-            
             init_hidden_lower = self.lowerModel.init_hidden(batch)
             logits_2 = self.lowerModel(input_, init_hidden_lower)
             logits = torch.cat((torch.stack(logits_1), torch.stack(logits_2)), dim=-1)
@@ -64,5 +65,8 @@ class HybridModel(nn.Module):
                 logit_list.append(tmp)
                 
         logit = torch.cat(logit_list, dim=0)
-        pred = self.softmax(torch.stack(logit_list))
+        pred = torch.reshape(
+            self.softmax(logit),
+            shape = [self.num_outputs, -1, self.num_classes]
+        )
         return logit, pred

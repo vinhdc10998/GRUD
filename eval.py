@@ -23,15 +23,11 @@ def evaluation(dataloader, model, device):
             # Compute prediction error
             _, prediction = model(X.float())
             y_pred = torch.argmax(prediction, dim=-1).T
-            for i in range(0, len(y),2):
-                y_tmp = y[i] + y[i+1]
-                y_pred_tmp = y_pred[i] + y_pred[i+1]
-            # print(np.array(y_tmp))
+            
             _r2_score += r2_score(
-                y_tmp.cpu().detach().numpy(),
-                y_pred_tmp.cpu().detach().numpy()
+                y.cpu().detach().numpy(),
+                y_pred.cpu().detach().numpy()
             )
-            # pause = input("PAUSE...")
             predictions.append(y_pred)
             labels.append(y)
     predictions = torch.cat(predictions, dim=0)
@@ -74,10 +70,7 @@ def main():
         for region in range(int(regions[0]), int(regions[-1])+1):
             print(f"----------Get True Label Region {region}----------")
             dataset = RegionDataset(root_dir, region, chromosome)
-            gen = []
-            for hap in range(0, len(dataset.label_haplotype_list), 2):
-                gen.append(dataset.label_haplotype_list[hap] + dataset.label_haplotype_list[hap+1])
-            label_haplotype.append(gen)
+            label_haplotype.append(dataset.label_haplotype_list)
             a1_freq_list.append(dataset.a1_freq_list)
         label_haplotype = np.concatenate(label_haplotype, axis=1)
         a1_freq_list = np.concatenate(a1_freq_list)
@@ -86,15 +79,15 @@ def main():
             for line in fp:
                 items = line.rstrip().split()
                 hap = items[5:]
+                print(hap)
                 predictions.append(hap)
-        print(np.array(predictions).shape)
         predictions = np.array(predictions, dtype=np.int).T
-        print(label_haplotype.shape, predictions.shape, a1_freq_list.shape)
+        print(predictions.shape, label_haplotype.shape)
         _r2_score = r2_score(
             label_haplotype,
             predictions
         )
-        plot_chart._draw_MAF_R2(torch.tensor(predictions), torch.tensor(label_haplotype), a1_freq_list, args.model_type, args.regions, bins=5)
+        plot_chart._draw_MAF_R2(torch.tensor(predictions), torch.tensor(label_haplotype), a1_freq_list, args.model_type, args.regions, bins=20)
         print("Evalutate R2 score:", _r2_score)
     else:
         for region in range(int(regions[0]), int(regions[-1])+1):
@@ -123,7 +116,8 @@ def main():
         imputation._merge_gen(
             args.result_gen_dir,
             args.model_type,
-            args.chromosome
+            args.chromosome,
+            regions
         )
 
 if __name__ == "__main__":
