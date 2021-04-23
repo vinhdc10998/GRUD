@@ -92,7 +92,7 @@ def load_lines(filename,header=False):
 def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_info_list, index_start):
     def one_hot(allele, a1_freq):
         if allele is None:
-            return [1.1 - a1_freq, a1_freq]
+            return [1. - a1_freq, a1_freq]
         return [1 - allele, allele]
 
     def convert_maf(a1_freq):
