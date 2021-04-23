@@ -16,10 +16,10 @@ class GRUModel(nn.Module):
         self.output_points_bw = model_config['output_points_bw']
         self.region = model_config['region']
         self.type_model = type_model
-        # self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(device)
+        self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(device)
 
-        output_features = self.feature_size*5
-        self.features_1 = nn.Linear(self.num_classes, output_features)
+        output_features = self.feature_size
+        self.features_1 = nn.Linear(self.feature_size, output_features)
         self.batch_norm_1 = nn.BatchNorm1d(output_features)
         self.batch_norm_2 = nn.BatchNorm1d(self.num_classes)
         self.sigmoid = nn.Sigmoid()
@@ -89,7 +89,7 @@ class GRUModel(nn.Module):
             for i, gru in enumerate(gru_cell):
                 output, state = gru(_input, hidden)
                 hidden = state
-                _input = torch.cat((output, _input), dim=2)
+                _input = torch.cat((_input, output), dim=2)
             logits, state = _input, hidden
         return logits, state
 
@@ -100,9 +100,10 @@ class GRUModel(nn.Module):
         _input = torch.unbind(x, dim=1)
         gru_inputs = []
         for index in range(self.num_inputs):
-            gru_input = self.features_1(_input[index])
+            gru_input = torch.matmul(_input[index], self._features[index])
+            # gru_input = self.features_1(gru_input)
             gru_input = self.batch_norm_1(gru_input)
-            # gru_input = self.sigmoid(gru_input)
+            gru_input = self.sigmoid(gru_input)
             gru_inputs.append(gru_input)
 
         fw_end = self.output_points_fw[-1]
@@ -135,9 +136,10 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs_bw[t_bw])
             gru_output = torch.cat(gru_output, dim=1)
             logit = self.list_linear[index](gru_output)
-            # logit = self.batch_norm_2(logit)
             logit = self.sigmoid(logit)
+
             logit_list.append(logit)
+            
         return logit_list
 
     def init_hidden(self, batch):

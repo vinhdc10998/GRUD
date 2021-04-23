@@ -92,12 +92,15 @@ def load_lines(filename,header=False):
 def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_info_list, index_start):
     def one_hot(allele, a1_freq):
         if allele is None:
-            return [1.0 - a1_freq, a1_freq]
+            return [1. - a1_freq, a1_freq]
         return [1 - allele, allele]
 
     def convert_maf(a1_freq):
         if a1_freq > 0.5:
-            return 1.001 - a1_freq
+            res = 1. - a1_freq
+            if res == 0.:
+                res = 0.00001
+            return res
         return a1_freq
 
     site_info_dict = {}
@@ -195,6 +198,8 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
             items = line.rstrip().split()
             position = items[position_col]
             if position in positions:
+                if position == '16061992':
+                    a = 1
                 index_position_info_dict = [i for i,val in enumerate(positions) if val==position]
                 for t in index_position_info_dict:
                     if items[2] == imp_site_info_list[t].a0 and items[3] == imp_site_info_list[t].a1:
@@ -206,6 +211,7 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
                 with open(index_start, "w+") as index_file:
                     start_index = index_file.write(str(k))
                 break
+        
     true_haplotype_list = np.array(true_haplotype_list, dtype=np.int).T
     haplotype_list = np.array(haplotype_list)
     a1_freq_list = np.array(a1_freq_list)

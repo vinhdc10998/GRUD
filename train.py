@@ -12,6 +12,7 @@ def evaluation(dataloader, model, device, loss_fn, is_train=True):
     '''
         Evaluate model with R square score
     '''
+
     if not is_train:
         model.eval()
     _r2_score = 0
@@ -43,7 +44,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler, is_train=Tru
         loss.backward()
         optimizer.step()
         scheduler.step()
-
+    
     _r2_score /= batch+1
     train_loss /= batch+1
     return train_loss, _r2_score

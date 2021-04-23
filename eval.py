@@ -61,7 +61,7 @@ def main():
     with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
         index_file.write("0")
     
-    check_gen = False
+    check_gen = True
     gen_file = os.path.join(args.result_gen_dir, f"{args.model_type}_{chromosome}.gen")
     if os.path.exists(gen_file) and check_gen:
         label_haplotype = []
@@ -70,24 +70,31 @@ def main():
         for region in range(int(regions[0]), int(regions[-1])+1):
             print(f"----------Get True Label Region {region}----------")
             dataset = RegionDataset(root_dir, region, chromosome)
-            label_haplotype.append(dataset.label_haplotype_list)
+            gen = []
+            for hap in range(0, len(dataset.label_haplotype_list), 2):
+                gen.append(dataset.label_haplotype_list[hap] + dataset.label_haplotype_list[hap+1])
+            site_info_list = [
+                site_info
+                for site_info in dataset.site_info_list if not site_info.array_marker_flag
+            ]
+            imputation._write_gen(np.array(gen), site_info_list, chromosome, region, args.model_type, args.result_gen_dir,ground_truth=True)
+            label_haplotype.append(gen)
             a1_freq_list.append(dataset.a1_freq_list)
         label_haplotype = np.concatenate(label_haplotype, axis=1)
         a1_freq_list = np.concatenate(a1_freq_list)
-
+        print(label_haplotype.shape)
+        pause = input("PAUSE...")
         with open(gen_file, 'r') as fp:
             for line in fp:
                 items = line.rstrip().split()
                 hap = items[5:]
-                print(hap)
                 predictions.append(hap)
         predictions = np.array(predictions, dtype=np.int).T
-        print(predictions.shape, label_haplotype.shape)
         _r2_score = r2_score(
             label_haplotype,
             predictions
         )
-        plot_chart._draw_MAF_R2(torch.tensor(predictions), torch.tensor(label_haplotype), a1_freq_list, args.model_type, args.regions, bins=20)
+        plot_chart._draw_MAF_R2(torch.tensor(predictions), torch.tensor(label_haplotype), a1_freq_list, args.model_type, args.regions, bins=30)
         print("Evalutate R2 score:", _r2_score)
     else:
         for region in range(int(regions[0]), int(regions[-1])+1):
