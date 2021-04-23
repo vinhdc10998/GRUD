@@ -53,7 +53,6 @@ class HybridModel(nn.Module):
         if self.type_model == 'Higher' or self.type_model == 'Lower':
             init_hidden = self.gruModel.init_hidden(batch)
             logit_list = self.gruModel(input_, init_hidden)
-
         else:
             assert False
             init_hidden_higher = self.higherModel.init_hidden(batch)
