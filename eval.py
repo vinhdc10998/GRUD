@@ -23,7 +23,6 @@ def evaluation(dataloader, model, device):
             # Compute prediction error
             _, prediction = model(X.float())
             y_pred = torch.argmax(prediction, dim=-1).T
-            
             _r2_score += r2_score(
                 y.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
@@ -44,11 +43,11 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     a1_freq_list = dataset.a1_freq_list
     #Init Model
     model = HybridModel(model_config, a1_freq_list, device, type_model=type_model).float().to(device)
-    model.load_state_dict(torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt'),map_location=torch.device(device)))
+    model.load_state_dict(torch.load(os.path.join(model_dir, f'{type_model}_region_{region}.pt'),map_location=torch.device(device)))
     print(f"Loaded {type_model}_{region} model")
     r2_test, predictions, labels = evaluation(dataloader, model, device)
     imputation._write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
-    plot_chart._draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=20)
+    plot_chart._draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=30)
     print("Evalutate R2 score:", r2_test)
 
 def main():
@@ -61,7 +60,7 @@ def main():
     with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
         index_file.write("0")
     
-    check_gen = True
+    check_gen = False
     gen_file = os.path.join(args.result_gen_dir, f"{args.model_type}_{chromosome}.gen")
     if os.path.exists(gen_file) and check_gen:
         label_haplotype = []

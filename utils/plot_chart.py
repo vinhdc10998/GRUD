@@ -25,28 +25,18 @@ def _draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_
     if not os.path.exists(output_prefix):
         os.mkdir(output_prefix)
     bins_list = pd.cut(a1_freq_list, bins, labels=range(bins))
-    print("[DEBUG BINS]")
-    print(bins_list)  
-    print(np.unique(bins_list))
-    print(np.bincount(bins_list))
-    print(pred.shape, label.shape)
-    print("------------------------")
     pred_bins = [[] for _ in range(bins)]
     label_bins = [[] for _ in range(bins)]
     for index, bin in enumerate(bins_list):
-        # print(index, bin)
         pred_bins[bin].append(pred[:, index])
         label_bins[bin].append(label[:, index])
-        # if index == 10:
-        #     break
     r2_score_list = []
     for index in range(bins):
         y = torch.stack(label_bins[index]).detach().numpy().T
         y_pred = torch.stack(pred_bins[index]).detach().numpy().T
         _r2_score = 0
-        print(y.shape, y_pred.shape)
         for pred, label in zip(y, y_pred):
-            _r2_score += r2_score(pred, label)
+            _r2_score += r2_score(label, pred)
         _r2_score /= len(y)
         r2_score_list.append(_r2_score)
 

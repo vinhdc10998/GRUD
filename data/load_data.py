@@ -98,8 +98,8 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
     def convert_maf(a1_freq):
         if a1_freq > 0.5:
             res = 1. - a1_freq
-            if res == 0.:
-                res = 0.00001
+            # if res == 0.:
+            #     res = 0.00001
             return res
         return a1_freq
 
@@ -198,8 +198,6 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
             items = line.rstrip().split()
             position = items[position_col]
             if position in positions:
-                if position == '16061992':
-                    a = 1
                 index_position_info_dict = [i for i,val in enumerate(positions) if val==position]
                 for t in index_position_info_dict:
                     if items[2] == imp_site_info_list[t].a0 and items[3] == imp_site_info_list[t].a1:
