@@ -98,8 +98,8 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
     def convert_maf(a1_freq):
         if a1_freq > 0.5:
             res = 1. - a1_freq
-            # if res == 0.:
-            #     res = 0.00001
+            if res == 0.:
+                res = 0.00001
             return res
         return a1_freq
 
