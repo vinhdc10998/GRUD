@@ -7,30 +7,38 @@ def evaluation(dataloader, model, device, loss_fn):
     '''
         Evaluate model with R square score
     '''
+    size = len(dataloader.dataset)
     model.eval()
-    _r2_score = 0
-    test_loss = 0
+    _r2_score, test_loss = 0, 0
     with torch.no_grad():
+        predictions = []
+        labels = []
         for batch, (X, y, a1_freq) in enumerate(dataloader):
             X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         
             # Compute prediction error
             logits, prediction = model(X)
-            loss = loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T))
-            
             y_pred = torch.argmax(prediction, dim=-1).T
-            _r2_score = r2_score(
+
+            test_loss += loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T)).item()
+            _r2_score += r2_score(
                 y.cpu().detach().numpy(),
                 y_pred.cpu().detach().numpy()
             )
-            #Get train loss
-            test_loss = loss.item()
-    return test_loss, _r2_score
+
+            predictions.append(y_pred)
+            labels.append(y)
+    predictions = torch.cat(predictions, dim=0)
+    labels = torch.cat(labels, dim=0)
+    test_loss /= size
+    _r2_score /=size
+    return test_loss, _r2_score, (predictions, labels)
 
 def train(dataloader, model, device, loss_fn, optimizer, scheduler):
     '''
         Train model GRU
     '''
+    size = len(dataloader.dataset)
     model.train()
     _r2_score = 0
     train_loss = 0
@@ -41,7 +49,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
         logits, prediction = model(X)
         loss = loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T))
         y_pred = torch.argmax(prediction, dim=-1).T
-        _r2_score = r2_score(
+        _r2_score += r2_score(
             y.cpu().detach().numpy(),
             y_pred.cpu().detach().numpy()
         )
@@ -52,9 +60,8 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
         optimizer.step()
         scheduler.step()
 
-        #Get train loss
         train_loss = loss.item()
-
+    _r2_score /= size
     return train_loss, _r2_score
 
 def save_model(model, region, type_model, path, best=False):
@@ -77,33 +84,33 @@ def get_device(gpu=False):
         print("You're using CPU to impute genotype")
     return device
 
-# def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_prefix, ground_truth=False):
-#     output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}.gen")
-#     if ground_truth:
-#         output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}_GT.gen")
+def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_prefix, ground_truth=False):
+    output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}.gen")
+    if ground_truth:
+        output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}_GT.gen")
 
-#     mkdir(os.path.dirname(output_prefix))
-#     with open(output_prefix, 'wt') as fp:
-#         for allele_probs, site_info in zip(predictions.T, imp_site_info_list):
-#             line = '--- %s %s %s %s ' \
-#                     % (site_info.id, site_info.position,
-#                         site_info.a0, site_info.a1)
-#             if ground_truth:
-#                 a1_freq = site_info.a1_freq
-#                 if site_info.a1_freq > 0.5:
-#                     a1_freq = 1. - site_info.a1_freq
-#                     if a1_freq == 0:
-#                         a1_freq = 0.0001
-#                 line = '--- %s %s %s %s %f ' \
-#                     % (site_info.id, site_info.position,
-#                         site_info.a0, site_info.a1, a1_freq)
+    mkdir(os.path.dirname(output_prefix))
+    with open(output_prefix, 'wt') as fp:
+        for allele_probs, site_info in zip(predictions.T, imp_site_info_list):
+            line = '--- %s %s %s %s ' \
+                    % (site_info.id, site_info.position,
+                        site_info.a0, site_info.a1)
+            if ground_truth:
+                a1_freq = site_info.a1_freq
+                if site_info.a1_freq > 0.5:
+                    a1_freq = 1. - site_info.a1_freq
+                    if a1_freq == 0:
+                        a1_freq = 0.0001
+                line = '--- %s %s %s %s %f ' \
+                    % (site_info.id, site_info.position,
+                        site_info.a0, site_info.a1, a1_freq)
             
-#             # alleles = []
-#             # for allele_index in range(0, len(allele_probs), 2):
-#             #     alleles.append(allele_probs[allele_index].item() + allele_probs[allele_index+1].item())
-#             line += ' '.join([str(allele) for allele in allele_probs.tolist()])
-#             fp.write(line)
-#             fp.write('\n')
+            # alleles = []
+            # for allele_index in range(0, len(allele_probs), 2):
+            #     alleles.append(allele_probs[allele_index].item() + allele_probs[allele_index+1].item())
+            line += ' '.join([str(allele) for allele in allele_probs.tolist()])
+            fp.write(line)
+            fp.write('\n')
 
 # def merge_gen(folder_dir, type_model, chr, regions):
 #     print("DEBUG", folder_dir, os.path.join(folder_dir, f"{type_model}_{chr}.gen"))
