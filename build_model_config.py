@@ -3,7 +3,7 @@ import numpy as np
 import json
 from data import utils
 
-#TODO
+#TODO:
 #build file config ( tam thoi dung` san cua model cung cap)
 class ModelConfig():
     def __init__(self, hidden_units, num_layers, num_outputs, feature_size, input_dim, num_input, scope, output_points_fw, output_points_bw, num_classes):

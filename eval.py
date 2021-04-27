@@ -81,7 +81,6 @@ def main():
             a1_freq_list.append(dataset.a1_freq_list)
         label_haplotype = np.concatenate(label_haplotype, axis=1)
         a1_freq_list = np.concatenate(a1_freq_list)
-        print(label_haplotype.shape)
         pause = input("PAUSE...")
         with open(gen_file, 'r') as fp:
             for line in fp:

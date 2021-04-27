@@ -1,19 +1,13 @@
-import torch 
-from torch import nn
 from torch import nn
 from torch.nn import functional as F
 
 class CustomCrossEntropyLoss(nn.Module):
-    def __init__(self, a1_freq_list, device, gramma=0):
+    def __init__(self, gamma=0):
         super(CustomCrossEntropyLoss, self).__init__()
-        self.gramma = gramma
-        self.a1_freq_list = a1_freq_list
-        self.device = device
+        self.gamma = gamma
 
-    def forward(self, pred, target):
-        batch_size = len(target) // len(self.a1_freq_list)
-        a1_freq_list = torch.tensor(self.a1_freq_list.tolist()*batch_size)
-        maf = ((2*a1_freq_list)**self.gramma).to(self.device)
-        y_true = (maf * target).long().to(self.device)
-        loss = nn.NLLLoss().to(self.device)
-        return loss(F.log_softmax(pred, dim=1) , y_true)
+    def forward(self, pred, target, a1_freq_list):
+        #TODO:
+        # assert pred, target, a1_freq_list
+        loss = nn.CrossEntropyLoss(reduction='none')
+        return (((2*a1_freq_list)**self.gamma) * loss(pred, target)).sum()
