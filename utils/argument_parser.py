@@ -31,5 +31,8 @@ def get_argument():
                         dest='model_dir', help='Weights model dir')
     parser.add_argument('--result-gen-dir', type=str, default='results/', required=False,
                         dest='result_gen_dir', help='result gen dir')
+    parser.add_argument('--best-model', action='store_true',
+                        dest='best_model', help='Get best model to eval')
+
     args = parser.parse_args()
     return args

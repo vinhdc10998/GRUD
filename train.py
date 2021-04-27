@@ -34,30 +34,30 @@ def run(dataloader, model_config, args, region, epochs=200):
 
     #Start train
     _r2_score_list, loss_values = [], [] #train
-    r2_test_list, test_loss_list = [], [] #validation
-    best_test_r2 = -99999999
+    r2_val_list, val_loss_list = [], [] #validation
+    best_val_r2 = -99999999
     for t in range(epochs):
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
-        test_loss, r2_test = evaluation(val_loader, model, device, loss_fn)
+        val_loss, r2_val, _ = evaluation(val_loader, model, device, loss_fn)
         loss_values.append(train_loss)
         _r2_score_list.append(r2_train)
-        r2_test_list.append(r2_test)
-        test_loss_list.append(test_loss)
-        print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")
+        r2_val_list.append(r2_val)
+        val_loss_list.append(val_loss)
+        print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, val_loss: {val_loss:>7f}, val_r2: {r2_val:>7f}")
         
         # Save best model
-        if r2_test > best_test_r2:
-            best_test_r2 = r2_test
+        if r2_val > best_val_r2:
+            best_val_r2 = r2_val
             best_epochs = t+1
             save_model(model, region, type_model, output_model_dir, best=True)
 
         #Early stopping
         if args.early_stopping:
-            early_stopping(test_loss)
+            early_stopping(val_loss)
             if early_stopping.early_stop:
                 break
-    print(f"Best model at epochs {best_epochs} with R2 score: {best_test_r2}")
-    draw_chart(loss_values, _r2_score_list, test_loss_list, r2_test_list, region, type_model)
+    print(f"Best model at epochs {best_epochs} with R2 score: {best_val_r2}")
+    draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, region, type_model)
     save_model(model, region, type_model, output_model_dir)
 
 def main():
@@ -79,9 +79,9 @@ def main():
             model_config['region'] = region
         dataset = RegionDataset(root_dir, region, chromosome)
         train_size = int(0.8 * len(dataset))
-        test_size = len(dataset) - train_size
-        train_set, val_set = torch.utils.data.random_split(dataset, [train_size, test_size])
-        print("[Train - Test]:", len(train_set), len(val_set))
+        val_size = len(dataset) - train_size
+        train_set, val_set = torch.utils.data.random_split(dataset, [train_size, val_size])
+        print("[Train - val]:", len(train_set), len(val_set))
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
         val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         dataloader = {'train': train_loader, 'validation': val_loader}
