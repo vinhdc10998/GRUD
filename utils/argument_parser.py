@@ -33,6 +33,8 @@ def get_argument():
                         dest='result_gen_dir', help='result gen dir')
     parser.add_argument('--best-model', action='store_true',
                         dest='best_model', help='Get best model to eval')
+    parser.add_argument('--test-dir', type=str, default='../Dataset/test_100_samples_GT', required=False,
+                        dest='test_dir', help='test data folder')
 
     args = parser.parse_args()
     return args

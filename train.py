@@ -19,7 +19,7 @@ def run(dataloader, model_config, args, region, epochs=200):
     gamma = args.gamma if type_model == 'Higher' else -args.gamma
     output_model_dir = args.output_model_dir
     train_loader = dataloader['train']
-    val_loader = dataloader['validation']
+    test_loader = dataloader['test']
 
     #Init Model
     model = SingleModel(model_config, device, type_model=type_model).to(device)
@@ -38,7 +38,7 @@ def run(dataloader, model_config, args, region, epochs=200):
     best_val_r2 = -99999999
     for t in range(epochs):
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
-        val_loss, r2_val, _ = evaluation(val_loader, model, device, loss_fn)
+        val_loss, r2_val, _ = evaluation(test_loader, model, device, loss_fn)
         loss_values.append(train_loss)
         _r2_score_list.append(r2_train)
         r2_val_list.append(r2_val)
@@ -68,8 +68,11 @@ def main():
     epochs = args.epochs
     chromosome = args.chromosome
     regions = args.regions.split("-")
+    test_dir = args.test_dir
 
     with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
+        index_file.write("0")
+    with open(os.path.join(test_dir, 'index.txt'),'w+') as index_file:
         index_file.write("0")
 
     for region in range(int(regions[0]), int(regions[-1])+1):
@@ -77,14 +80,14 @@ def main():
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
             model_config['region'] = region
-        dataset = RegionDataset(root_dir, region, chromosome)
-        train_size = int(0.8 * len(dataset))
-        val_size = len(dataset) - train_size
-        train_set, val_set = torch.utils.data.random_split(dataset, [train_size, val_size])
-        print("[Train - val]:", len(train_set), len(val_set))
+        train_set = RegionDataset(root_dir, region, chromosome)
+        test_set = RegionDataset(test_dir, region, chromosome)
+        print("[Train - val]:", len(train_set), len(test_set), 'samples')
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-        dataloader = {'train': train_loader, 'validation': val_loader}
+        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+        dataloader = {
+            'train': train_loader, 
+            'test': test_loader}
         run(
             dataloader,
             model_config,

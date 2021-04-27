@@ -19,8 +19,15 @@ class GRUModel(nn.Module):
         self.device = device
 
         self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(self.device)
+        output_linear_dim = self.feature_size * 5
+        self.linear = nn.Sequential(
+            nn.Linear(self.feature_size, output_linear_dim),
+            nn.BatchNorm1d(output_linear_dim),
+            nn.LeakyReLU()
+        )
+
         self.gru = nn.ModuleDict(self._create_gru_cell(
-            self.feature_size, 
+            output_linear_dim, 
             self.hidden_units
         ))
         self.list_linear = nn.ModuleList(self._create_linear_list(
@@ -72,6 +79,7 @@ class GRUModel(nn.Module):
         gru_inputs = []
         for index in range(self.num_inputs):
             gru_input = torch.matmul(_input[index], self._features[index])
+            gru_input = self.linear(gru_input)
             gru_inputs.append(gru_input)
 
         outputs_fw = torch.zeros(self.num_inputs, batch_size, self.hidden_units)
