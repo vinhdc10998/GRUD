@@ -8,6 +8,7 @@ import subprocess
 import numpy as np
 import sys
 import linecache
+import torch
 
 def system(command):
     subprocess.call(command, shell=True)
@@ -202,7 +203,7 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
                 for t in index_position_info_dict:
                     if items[2] == imp_site_info_list[t].a0 and items[3] == imp_site_info_list[t].a1:
                         hap = linecache.getline(hap_true_file, k).rstrip().split()
-                        true_haplotype_list.append(hap) 
+                        true_haplotype_list.append(list(map(int, hap))) 
                         a1_freq_list.append(convert_maf(imp_site_info_list[t].a1_freq))
                         count += 1
             if count == label_site_count:
@@ -210,7 +211,7 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
                     start_index = index_file.write(str(k))
                 break
         
-    true_haplotype_list = np.array(true_haplotype_list, dtype=np.int).T
-    haplotype_list = np.array(haplotype_list)
-    a1_freq_list = np.array(a1_freq_list)
+    true_haplotype_list = torch.tensor(true_haplotype_list).T
+    haplotype_list = torch.tensor(haplotype_list)
+    a1_freq_list = torch.tensor(a1_freq_list)
     return haplotype_list, true_haplotype_list, a1_freq_list

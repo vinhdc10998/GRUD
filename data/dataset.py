@@ -1,8 +1,10 @@
 from __future__ import print_function, division
+
 import os
-import numpy as np
-from .load_data import load_site_info, load_dataset
+import torch
 from torch.utils.data import Dataset
+from .load_data import load_site_info, load_dataset
+
 
 class RegionDataset(Dataset):
     def __init__(self, root_dir, region=1, chromosome='chr22'):
@@ -22,6 +24,7 @@ class RegionDataset(Dataset):
         return len(self.haplotype_list)
     
     def __getitem__(self, index):
-        x = np.array(self.haplotype_list[index])
-        y = np.array(self.label_haplotype_list[index])
-        return x, y
+        x = self.haplotype_list[index]
+        y = self.label_haplotype_list[index]
+        a1_freq_list = self.a1_freq_list
+        return x, y, a1_freq_list
