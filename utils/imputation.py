@@ -9,7 +9,7 @@ def evaluation(dataloader, model, device, loss_fn):
     '''
     size = len(dataloader.dataset)
     model.eval()
-    _r2_score, test_loss = 0, 0
+    test_loss = 0
     with torch.no_grad():
         predictions = []
         labels = []
@@ -21,17 +21,16 @@ def evaluation(dataloader, model, device, loss_fn):
             y_pred = torch.argmax(prediction, dim=-1).T
 
             test_loss += loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T)).item()
-            _r2_score += r2_score(
-                y.cpu().detach().numpy(),
-                y_pred.cpu().detach().numpy()
-            )
-
             predictions.append(y_pred)
             labels.append(y)
+
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     test_loss /= size
-    _r2_score /=size
+    _r2_score = r2_score(
+                labels.cpu().detach().numpy(),
+                predictions.cpu().detach().numpy()
+            )
     return test_loss, _r2_score, (predictions, labels)
 
 def train(dataloader, model, device, loss_fn, optimizer, scheduler):
@@ -42,6 +41,9 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
     model.train()
     _r2_score = 0
     train_loss = 0
+    predictions = []
+    labels = []
+
     for batch, (X, y, a1_freq) in enumerate(dataloader):
         X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         
@@ -49,11 +51,9 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
         logits, prediction = model(X)
         loss = loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T))
         y_pred = torch.argmax(prediction, dim=-1).T
-        _r2_score += r2_score(
-            y.cpu().detach().numpy(),
-            y_pred.cpu().detach().numpy()
-        )
         
+        predictions.append(y_pred)
+        labels.append(y)
         #Backpropagation
         optimizer.zero_grad()
         loss.backward()
@@ -61,7 +61,13 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
         scheduler.step()
 
         train_loss = loss.item()
-    _r2_score /= size
+        
+    predictions = torch.cat(predictions, dim=0)
+    labels = torch.cat(labels, dim=0)
+    _r2_score = r2_score(
+            labels.cpu().detach().numpy(),
+            predictions.cpu().detach().numpy()
+        )
     return train_loss, _r2_score
 
 def save_model(model, region, type_model, path, best=False):

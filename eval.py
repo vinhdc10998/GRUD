@@ -9,33 +9,7 @@ from torch.utils.data import DataLoader
 from utils.argument_parser import get_argument
 from utils.plot_chart import draw_MAF_R2
 from utils.imputation import evaluation, get_device, write_gen
-
 torch.manual_seed(42)
-
-# def evaluation(dataloader, model, device):
-#     '''
-#         Evaluate model with R square score
-#     '''
-#     model.eval()
-#     _r2_score = 0
-#     with torch.no_grad():
-#         predictions = []
-#         labels = []
-#         for batch, (X, y) in enumerate(dataloader):
-#             X, y = X.to(device), y.to(device)
-#             # Compute prediction error
-#             _, prediction = model(X.float())
-#             y_pred = torch.argmax(prediction, dim=-1).T
-#             _r2_score += r2_score(
-#                 y.cpu().detach().numpy(),
-#                 y_pred.cpu().detach().numpy()
-#             )
-#             predictions.append(y_pred)
-#             labels.append(y)
-#     predictions = torch.cat(predictions, dim=0)
-#     labels = torch.cat(labels, dim=0)
-#     _r2_score /= batch+1
-#     return _r2_score, predictions, labels
 
 def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     device = get_device(args.gpu)

@@ -16,8 +16,9 @@ class GRUModel(nn.Module):
         self.output_points_bw = model_config['output_points_bw']
         self.region = model_config['region']
         self.type_model = type_model
+        self.device = device
 
-        self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(device)
+        self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(self.device)
         self.gru = nn.ModuleDict(self._create_gru_cell(
             self.feature_size, 
             self.hidden_units
@@ -98,7 +99,7 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs_fw[t_fw]) 
             if t_bw is not None:
                 gru_output.append(outputs_bw[t_bw])
-            gru_output = torch.cat(gru_output, dim=1)
+            gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
             logit_list.append(logit)
         return logit_list
