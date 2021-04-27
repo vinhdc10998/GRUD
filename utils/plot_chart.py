@@ -24,7 +24,8 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type_
 def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_prefix = 'images'):
     if not os.path.exists(output_prefix):
         os.mkdir(output_prefix)
-    bins_list = pd.cut(a1_freq_list.tolist(), bins, labels=range(bins))
+    a1_freq_list = a1_freq_list.tolist()
+    bins_list = pd.cut(a1_freq_list, bins, labels=range(bins))
     pred_bins = [[] for _ in range(bins)]
     label_bins = [[] for _ in range(bins)]
     for index, bin in enumerate(bins_list):
@@ -34,10 +35,7 @@ def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_p
     for index in range(bins):
         y = torch.stack(label_bins[index]).detach().numpy().T
         y_pred = torch.stack(pred_bins[index]).detach().numpy().T
-        _r2_score = 0
-        for pred, label in zip(y, y_pred):
-            _r2_score += r2_score(label, pred)
-        _r2_score /= len(y)
+        _r2_score = r2_score(y, y_pred)
         r2_score_list.append(_r2_score)
 
     x_axis = np.unique(pd.cut(a1_freq_list, bins, labels=np.linspace(start=0, stop=0.5, num=bins)))
