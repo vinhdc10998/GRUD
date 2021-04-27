@@ -37,7 +37,6 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
     '''
         Train model GRU
     '''
-    size = len(dataloader.dataset)
     model.train()
     _r2_score = 0
     train_loss = 0
@@ -61,7 +60,7 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
         scheduler.step()
 
         train_loss = loss.item()
-        
+
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     _r2_score = r2_score(

@@ -10,4 +10,4 @@ class CustomCrossEntropyLoss(nn.Module):
         #TODO:
         # assert pred, target, a1_freq_list
         loss = nn.CrossEntropyLoss(reduction='none')
-        return (((2*a1_freq_list)**self.gamma) * loss(pred, target)).sum()
+        return (((2*a1_freq_list)**self.gamma) * loss(pred, target)).mean()
