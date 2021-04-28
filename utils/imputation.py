@@ -7,20 +7,21 @@ def evaluation(dataloader, model, device, loss_fn):
     '''
         Evaluate model with R square score
     '''
-    size = len(dataloader.dataset)
+    size = len(dataloader)
     model.eval()
     test_loss = 0
     with torch.no_grad():
         predictions = []
         labels = []
-        for batch, (X, y, a1_freq) in enumerate(dataloader):
+        for (X, y, a1_freq) in dataloader:
             X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         
             # Compute prediction error
             logits, prediction = model(X)
             y_pred = torch.argmax(prediction, dim=-1).T
-
+            
             test_loss += loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T)).item()
+
             predictions.append(y_pred)
             labels.append(y)
 

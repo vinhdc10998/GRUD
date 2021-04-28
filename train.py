@@ -70,9 +70,9 @@ def main():
     regions = args.regions.split("-")
     test_dir = args.test_dir
 
-    with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
+    with open(os.path.join(root_dir, 'index.txt'), 'w+') as index_file:
         index_file.write("0")
-    with open(os.path.join(test_dir, 'index.txt'),'w+') as index_file:
+    with open(os.path.join(test_dir, 'index.txt'), 'w+') as index_file:
         index_file.write("0")
 
     for region in range(int(regions[0]), int(regions[-1])+1):
@@ -82,7 +82,7 @@ def main():
             model_config['region'] = region
         train_set = RegionDataset(root_dir, region, chromosome)
         test_set = RegionDataset(test_dir, region, chromosome)
-        print("[Train - val]:", len(train_set), len(test_set), 'samples')
+        print("[Train - test]:", len(train_set), len(test_set), 'samples')
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         dataloader = {

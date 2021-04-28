@@ -19,16 +19,18 @@ class GRUModel(nn.Module):
         self.device = device
 
         self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(self.device)
-        output_linear_dim = self.feature_size * 5
+        output_linear_dim = self.feature_size * 2
         self.linear = nn.Sequential(
             nn.Linear(self.feature_size, output_linear_dim),
             nn.BatchNorm1d(output_linear_dim),
             nn.LeakyReLU()
         )
+        self.sigmoid = nn.Sigmoid()
 
         self.gru = nn.ModuleDict(self._create_gru_cell(
             output_linear_dim, 
-            self.hidden_units
+            self.hidden_units,
+            self.num_layers
         ))
         self.list_linear = nn.ModuleList(self._create_linear_list(
             self.hidden_units,
@@ -38,19 +40,10 @@ class GRUModel(nn.Module):
         ))
 
     @staticmethod
-    def _create_gru_cell(input_size, hidden_units):
-        gru_fw = nn.ModuleList([
-                nn.GRU(input_size, hidden_units),
-                nn.GRU(hidden_units, hidden_units),
-                nn.GRU(hidden_units, hidden_units),
-                nn.GRU(hidden_units, hidden_units)
-            ])
-        gru_bw = nn.ModuleList([
-                nn.GRU(input_size, hidden_units),
-                nn.GRU(hidden_units, hidden_units),
-                nn.GRU(hidden_units, hidden_units),
-                nn.GRU(hidden_units, hidden_units)
-            ])
+    def _create_gru_cell(input_size, hidden_units, num_layers):
+        gru = [nn.GRU(input_size, hidden_units)] + [nn.GRU(hidden_units, hidden_units) for _ in range(num_layers-1)]
+        gru_fw = nn.ModuleList(gru)
+        gru_bw = nn.ModuleList(gru)
         return {
             'fw': gru_fw,
             'bw': gru_bw
@@ -109,6 +102,7 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs_bw[t_bw])
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
+            logit = self.sigmoid(logit)
             logit_list.append(logit)
         return logit_list
 
