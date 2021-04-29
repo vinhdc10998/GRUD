@@ -19,16 +19,11 @@ class GRUModel(nn.Module):
         self.device = device
 
         self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(self.device)
-        output_linear_dim = self.feature_size * 2
-        self.linear = nn.Sequential(
-            nn.Linear(self.feature_size, output_linear_dim),
-            nn.BatchNorm1d(output_linear_dim),
-            nn.LeakyReLU()
-        )
         self.sigmoid = nn.Sigmoid()
+        self.leakyRelu = nn.LeakyReLU()
 
         self.gru = nn.ModuleDict(self._create_gru_cell(
-            output_linear_dim, 
+            self.feature_size, 
             self.hidden_units,
             self.num_layers
         ))
@@ -42,8 +37,8 @@ class GRUModel(nn.Module):
     @staticmethod
     def _create_gru_cell(input_size, hidden_units, num_layers):
         gru = [nn.GRU(input_size, hidden_units)] + [nn.GRU(hidden_units, hidden_units) for _ in range(num_layers-1)]
-        gru_fw = nn.ModuleList(gru)
-        gru_bw = nn.ModuleList(gru)
+        gru_fw = nn.ModuleList(copy.deepcopy(gru))
+        gru_bw = nn.ModuleList(copy.deepcopy(gru))
         return {
             'fw': gru_fw,
             'bw': gru_bw
@@ -67,12 +62,12 @@ class GRUModel(nn.Module):
         with torch.no_grad():
             _input = torch.unbind(x, dim=1)
             fw_end = self.output_points_fw[-1]
-            bw_start = self.output_points_bw[0] #bw end
+            bw_end = self.output_points_bw[0]
             
         gru_inputs = []
         for index in range(self.num_inputs):
             gru_input = torch.matmul(_input[index], self._features[index])
-            gru_input = self.linear(gru_input)
+            gru_input = self.leakyRelu(gru_input)
             gru_inputs.append(gru_input)
 
         outputs_fw = torch.zeros(self.num_inputs, batch_size, self.hidden_units)
@@ -83,14 +78,14 @@ class GRUModel(nn.Module):
             outputs, _ = self._compute_gru(self.gru['fw'], inputs_fw, batch_size)
             for t in range(fw_end + 1):
                 outputs_fw[t] = outputs[t]
-        if bw_start is not None:
+        if bw_end is not None:
             inputs_bw = torch.stack([
                 gru_inputs[i]
-                for i in range(self.num_inputs - 1, bw_start - 1, -1)
+                for i in range(self.num_inputs - 1, bw_end - 1, -1)
             ])
             outputs, _ = self._compute_gru(self.gru['bw'], inputs_bw, batch_size)
             for i, t in enumerate(
-                range(self.num_inputs - 1, bw_start - 1, -1)):
+                range(self.num_inputs - 1, bw_end - 1, -1)):
                 outputs_bw[t] = outputs[i]
 
         logit_list = []
