@@ -12,13 +12,15 @@ from utils.plot_chart import draw_chart
 from utils.imputation import train, evaluation, get_device, save_model
 torch.manual_seed(42)
 
-def run(dataloader, model_config, args, region, epochs=200):
+def run(dataloader, model_config, args, region):
     device = get_device(args.gpu)
     type_model = args.model_type
     lr = args.learning_rate
+    epochs = args.epochs
     gamma = args.gamma if type_model == 'Higher' else -args.gamma
     output_model_dir = args.output_model_dir
     train_loader = dataloader['train']
+    val_loader = dataloader['val']
     test_loader = dataloader['test']
 
     #Init Model
@@ -35,19 +37,23 @@ def run(dataloader, model_config, args, region, epochs=200):
     #Start train
     _r2_score_list, loss_values = [], [] #train
     r2_val_list, val_loss_list = [], [] #validation
-    best_val_r2 = -99999999
+    best_val_loss = 99999999
     for t in range(epochs):
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
-        val_loss, r2_val, _ = evaluation(test_loader, model, device, loss_fn)
+        val_loss, r2_val, _ = evaluation(val_loader, model, device, loss_fn, is_train=True)
+        test_loss, r2_test, _ = evaluation(test_loader, model, device, loss_fn, is_train=False)
         loss_values.append(train_loss)
         _r2_score_list.append(r2_train)
         r2_val_list.append(r2_val)
         val_loss_list.append(val_loss)
-        print(f"[REGION {region} - EPOCHS {t+1}]: train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f}, val_loss: {val_loss:>7f}, val_r2: {r2_val:>7f}")
-        
+        print(f"[REGION {region} - EPOCHS {t+1}]\
+            train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f},\
+                val_loss: {val_loss:>7f}, val_r2: {r2_val:>7f},\
+                    test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")   
+
         # Save best model
-        if r2_val > best_val_r2:
-            best_val_r2 = r2_val
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
             best_epochs = t+1
             save_model(model, region, type_model, output_model_dir, best=True)
 
@@ -56,7 +62,7 @@ def run(dataloader, model_config, args, region, epochs=200):
             early_stopping(val_loss)
             if early_stopping.early_stop:
                 break
-    print(f"Best model at epochs {best_epochs} with R2 score: {best_val_r2}")
+    print(f"Best model at epochs {best_epochs} with loss: {best_val_loss}")
     draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, region, type_model)
     save_model(model, region, type_model, output_model_dir)
 
@@ -80,20 +86,26 @@ def main():
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
             model_config['region'] = region
-        train_set = RegionDataset(root_dir, region, chromosome)
+        train_val_set = RegionDataset(root_dir, region, chromosome)
         test_set = RegionDataset(test_dir, region, chromosome)
-        print("[Train - test]:", len(train_set), len(test_set), 'samples')
+        train_size = int(0.8 * len(train_val_set))
+        val_size = len(train_val_set) - train_size
+        train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])
+
+        print("[Train - Val- Test]:", len(train_set), len(val_set), len(test_set), 'samples')
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         dataloader = {
             'train': train_loader, 
-            'test': test_loader}
+            'test': test_loader,
+            'val': val_loader
+        }
         run(
             dataloader,
             model_config,
             args, 
-            region,
-            epochs
+            region
         )
 
 if __name__ == "__main__":
