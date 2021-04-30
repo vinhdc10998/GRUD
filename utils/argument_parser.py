@@ -21,7 +21,7 @@ def get_argument():
                         dest='chromosome', help='Chromosome')
     parser.add_argument('--lr', type=float, default=1e-4, required=False,
                         dest='learning_rate', help='Learning rate')
-    parser.add_argument('--gamma', type=str, default=0.1, required=False,
+    parser.add_argument('--gamma', type=str, default=1.5, required=False,
                         dest='gamma', help='gamma in loss function')
     parser.add_argument('--output-model-dir', type=str, default='model/weights', required=False,
                         dest='output_model_dir', help='Output weights model dir')

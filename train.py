@@ -1,7 +1,6 @@
 import os
 import json
 import torch
-from sklearn.metrics import r2_score
 from model.custom_cross_entropy import CustomCrossEntropyLoss
 from model.single_model import SingleModel
 from model.early_stopping import EarlyStopping
@@ -28,20 +27,20 @@ def run(dataloader, model_config, args, region):
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
-    
+
     loss_fn = CustomCrossEntropyLoss(gamma)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
     early_stopping = EarlyStopping(patience=10)
-
+    
     #Start train
     _r2_score_list, loss_values = [], [] #train
     r2_val_list, val_loss_list = [], [] #validation
-    best_val_loss = 99999999
+    best_val_loss = 99999999 
     for t in range(epochs):
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
-        val_loss, r2_val, _ = evaluation(val_loader, model, device, loss_fn, is_train=True)
-        test_loss, r2_test, _ = evaluation(test_loader, model, device, loss_fn, is_train=False)
+        val_loss, r2_val, _ = evaluation(val_loader, model, device, loss_fn)
+        test_loss, r2_test, _ = evaluation(test_loader, model, device, loss_fn)
         loss_values.append(train_loss)
         _r2_score_list.append(r2_train)
         r2_val_list.append(r2_val)
@@ -88,7 +87,7 @@ def main():
             model_config['region'] = region
         train_val_set = RegionDataset(root_dir, region, chromosome)
         test_set = RegionDataset(test_dir, region, chromosome)
-        train_size = int(0.8 * len(train_val_set))
+        train_size = int(0.7 * len(train_val_set))
         val_size = len(train_val_set) - train_size
         train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])
 

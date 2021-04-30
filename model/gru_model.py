@@ -19,8 +19,6 @@ class GRUModel(nn.Module):
         self.device = device
 
         self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(self.device)
-        self.sigmoid = nn.Sigmoid()
-        self.leakyRelu = nn.LeakyReLU()
 
         self.gru = nn.ModuleDict(self._create_gru_cell(
             self.feature_size, 
@@ -67,7 +65,6 @@ class GRUModel(nn.Module):
         gru_inputs = []
         for index in range(self.num_inputs):
             gru_input = torch.matmul(_input[index], self._features[index])
-            gru_input = self.leakyRelu(gru_input)
             gru_inputs.append(gru_input)
 
         outputs_fw = torch.zeros(self.num_inputs, batch_size, self.hidden_units)
@@ -97,7 +94,6 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs_bw[t_bw])
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
-            logit = self.sigmoid(logit)
             logit_list.append(logit)
         return logit_list
 
