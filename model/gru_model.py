@@ -95,7 +95,7 @@ class GRUModel(nn.Module):
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
             logit_list.append(logit)
-        return logit_list
+        return torch.stack(logit_list)
 
     def init_hidden(self, batch):
         weight = next(self.gru.parameters()).data
