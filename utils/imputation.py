@@ -3,12 +3,11 @@ import torch
 from sklearn.metrics import r2_score
 from data.load_data import *
 
-def evaluation(dataloader, model, device, loss_fn, is_train=False):
+def evaluation(dataloader, model, device, loss_fn):
     '''
         Evaluate model with R square score
     '''
-    if not is_train:
-        model.eval()
+    model.eval()
     size = len(dataloader)
     test_loss = 0
     with torch.no_grad():
