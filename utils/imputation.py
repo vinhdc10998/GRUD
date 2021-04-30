@@ -1,7 +1,7 @@
 import os
 import torch
 from sklearn.metrics import r2_score
-from data.load_data import *
+from data.load_data import mkdir
 
 def evaluation(dataloader, model, device, loss_fn):
     '''
@@ -19,7 +19,6 @@ def evaluation(dataloader, model, device, loss_fn):
             # Compute prediction error
             logits, prediction = model(X)
             y_pred = torch.argmax(prediction, dim=-1).T
-            
             test_loss += loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T)).item()
 
             predictions.append(y_pred)
