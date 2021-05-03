@@ -27,10 +27,8 @@ def evaluation(dataloader, model, device, loss_fn):
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     test_loss /= size
-    _r2_score = r2_score(
-                labels.cpu().detach().numpy(),
-                predictions.cpu().detach().numpy()
-            )
+    n_samples = len(labels)
+    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
     return test_loss, _r2_score, (predictions, labels)
 
 def train(dataloader, model, device, loss_fn, optimizer, scheduler):
@@ -63,10 +61,9 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
 
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
-    _r2_score = r2_score(
-            labels.cpu().detach().numpy(),
-            predictions.cpu().detach().numpy()
-        )
+    n_samples = len(labels)
+    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
+
     return train_loss, _r2_score
 
 def save_model(model, region, type_model, path, best=False):
