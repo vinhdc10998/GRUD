@@ -87,7 +87,7 @@ def main():
             model_config['region'] = region
         train_val_set = RegionDataset(root_dir, region, chromosome)
         test_set = RegionDataset(test_dir, region, chromosome)
-        train_size = int(0.7 * len(train_val_set))
+        train_size = int(0.8 * len(train_val_set))
         val_size = len(train_val_set) - train_size
         train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])
 
