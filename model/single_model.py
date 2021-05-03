@@ -16,8 +16,11 @@ class SingleModel(nn.Module):
 
     def forward(self, input_):
         logit_list = self.gruModel(input_)
-        logit = torch.reshape(logit_list, shape=[-1, self.num_classes])
-        prediction = F.softmax(logit_list, dim=-1)
+        logit = torch.cat(logit_list, dim=0)
+        prediction = torch.reshape(
+            F.softmax(logit, dim=-1),
+            shape = [self.num_outputs, -1, self.num_classes]
+        )
         return logit, prediction
     
     
