@@ -1,6 +1,6 @@
 import numpy as np
-import copy
 import torch
+import copy
 from torch import nn
 class GRUModel(nn.Module):
     def __init__(self, model_config, device, type_model):
@@ -23,12 +23,12 @@ class GRUModel(nn.Module):
         self.linear = nn.Sequential(
             nn.Linear(self.feature_size, output_linear_dim),
             nn.BatchNorm1d(output_linear_dim),
-            nn.LeakyReLU()
+            nn.ReLU()
         )
         self.sigmoid = nn.Sigmoid()
 
         self.gru = nn.ModuleDict(self._create_gru_cell(
-            output_linear_dim, 
+            self.feature_size, 
             self.hidden_units,
             self.num_layers
         ))
@@ -42,8 +42,8 @@ class GRUModel(nn.Module):
     @staticmethod
     def _create_gru_cell(input_size, hidden_units, num_layers):
         gru = [nn.GRU(input_size, hidden_units)] + [nn.GRU(hidden_units, hidden_units) for _ in range(num_layers-1)]
-        gru_fw = nn.ModuleList(gru)
-        gru_bw = nn.ModuleList(gru)
+        gru_fw = nn.ModuleList(copy.deepcopy(gru))
+        gru_bw = nn.ModuleList(copy.deepcopy(gru))
         return {
             'fw': gru_fw,
             'bw': gru_bw
@@ -72,7 +72,7 @@ class GRUModel(nn.Module):
         gru_inputs = []
         for index in range(self.num_inputs):
             gru_input = torch.matmul(_input[index], self._features[index])
-            gru_input = self.linear(gru_input)
+            # gru_input = self.linear(gru_input)
             gru_inputs.append(gru_input)
 
         outputs_fw = torch.zeros(self.num_inputs, batch_size, self.hidden_units)
@@ -102,7 +102,7 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs_bw[t_bw])
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
-            logit = self.sigmoid(logit)
+            # logit = self.sigmoid(logit)
             logit_list.append(logit)
         return logit_list
 
