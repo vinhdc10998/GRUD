@@ -18,7 +18,6 @@ class GRUModel(nn.Module):
         self.device = device
 
         self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(self.device)
-        self.tanh = nn.Tanh()
 
         self.gru = nn.ModuleList(self._create_gru_cell(
             self.feature_size, 
@@ -34,7 +33,8 @@ class GRUModel(nn.Module):
 
     @staticmethod
     def _create_gru_cell(input_size, hidden_units, num_layers):
-        gru = [nn.GRU(input_size, hidden_units, bidirectional=True)] + [nn.GRU(hidden_units*2, hidden_units, bidirectional=True) for _ in range(num_layers-1)]
+        gru = [nn.GRU(input_size, hidden_units, bidirectional=True)] # First layer
+        gru += [nn.GRU(hidden_units*2, hidden_units, bidirectional=True) for _ in range(num_layers-1)] # 2 -> num_layers
         return gru
     
     @staticmethod
@@ -65,7 +65,6 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs[t_bw, :, self.hidden_units:])
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
-            logit = self.tanh(logit)
             logit_list.append(logit)
         return logit_list
 

@@ -55,10 +55,9 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step()
-
         train_loss = loss.item()
 
+    scheduler.step()
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     n_samples = len(labels)
