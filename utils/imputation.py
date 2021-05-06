@@ -1,14 +1,14 @@
 import os
 import torch
 from sklearn.metrics import r2_score
-from data.load_data import *
+from data.load_data import mkdir
 
 def evaluation(dataloader, model, device, loss_fn):
     '''
         Evaluate model with R square score
     '''
-    size = len(dataloader)
     model.eval()
+    size = len(dataloader)
     test_loss = 0
     with torch.no_grad():
         predictions = []
@@ -19,7 +19,6 @@ def evaluation(dataloader, model, device, loss_fn):
             # Compute prediction error
             logits, prediction = model(X)
             y_pred = torch.argmax(prediction, dim=-1).T
-            
             test_loss += loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T)).item()
 
             predictions.append(y_pred)
@@ -28,10 +27,8 @@ def evaluation(dataloader, model, device, loss_fn):
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     test_loss /= size
-    _r2_score = r2_score(
-                labels.cpu().detach().numpy(),
-                predictions.cpu().detach().numpy()
-            )
+    n_samples = len(labels)
+    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
     return test_loss, _r2_score, (predictions, labels)
 
 def train(dataloader, model, device, loss_fn, optimizer, scheduler):
@@ -58,16 +55,14 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step()
-
         train_loss = loss.item()
 
+    scheduler.step()
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
-    _r2_score = r2_score(
-            labels.cpu().detach().numpy(),
-            predictions.cpu().detach().numpy()
-        )
+    n_samples = len(labels)
+    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
+
     return train_loss, _r2_score
 
 def save_model(model, region, type_model, path, best=False):

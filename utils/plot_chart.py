@@ -35,10 +35,11 @@ def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_p
     for index in range(bins):
         y = torch.stack(label_bins[index]).detach().numpy().T
         y_pred = torch.stack(pred_bins[index]).detach().numpy().T
-        _r2_score = r2_score(y, y_pred)
+        n_samples = len(y)
+        _r2_score = sum([r2_score(y[i], y_pred[i]) for i in range(n_samples)])/n_samples
         r2_score_list.append(_r2_score)
-
     x_axis = np.unique(pd.cut(a1_freq_list, bins, labels=np.linspace(start=0, stop=0.5, num=bins)))
+    print(np.unique(bins_list))
     plt.plot(x_axis, r2_score_list)
     plt.grid(linestyle='--')
     plt.xlabel("Minor Allele Frequency")
