@@ -17,7 +17,7 @@ class GRUModel(nn.Module):
         self.type_model = type_model
         self.device = device
 
-        self._features = torch.tensor(np.load(f'model/features/region_{self.region}_model_features.npy')).to(self.device)
+        self.linear = nn.Linear(self.input_dim, self.feature_size, bias=True)
 
         self.gru = nn.ModuleList(self._create_gru_cell(
             self.feature_size, 
@@ -53,7 +53,7 @@ class GRUModel(nn.Module):
         '''
         batch_size = x.shape[0]
         _input = torch.swapaxes(x, 0, 1)
-        gru_inputs = torch.matmul(_input, self._features)
+        gru_inputs = self.linear(_input)
         outputs, _ = self._compute_gru(self.gru, gru_inputs, batch_size)
 
         logit_list = []
