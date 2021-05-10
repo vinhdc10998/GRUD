@@ -17,7 +17,7 @@ class GRUModel(nn.Module):
         self.type_model = type_model
         self.device = device
 
-        self.linear = nn.Linear(self.input_dim, self.feature_size, bias=True)
+        self.linear = nn.Linear(self.input_dim, self.feature_size, bias=False)
 
         self.gru = nn.ModuleList(self._create_gru_cell(
             self.feature_size, 
