@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
+print("hi")
 class GRUModel(nn.Module):
     def __init__(self, model_config, device, type_model):
         super(GRUModel,self).__init__()
