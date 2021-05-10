@@ -1,3 +1,4 @@
+from model.multi_model import MultiModel
 import os
 import json
 import torch
@@ -16,14 +17,27 @@ def run(dataloader, model_config, args, region):
     type_model = args.model_type
     lr = args.learning_rate
     epochs = args.epochs
-    gamma = args.gamma if type_model == 'Higher' else -args.gamma
+
     output_model_dir = args.output_model_dir
     train_loader = dataloader['train']
     val_loader = dataloader['val']
     test_loader = dataloader['test']
 
     #Init Model
-    model = SingleModel(model_config, device, type_model=type_model).to(device)
+    if type_model in ['Lower', 'Higher']:
+        gamma = args.gamma if type_model == 'Higher' else -args.gamma
+        model = SingleModel(model_config, device, type_model=type_model).to(device) 
+
+    elif type_model in ['Hybrid']:
+        gamma = 0
+        if args.best_model: 
+            model_config['lower_path'] = os.path.join(args.model_dir, f'Best_Lower_region_{region}.pt')
+            model_config['higher_path'] = os.path.join(args.model_dir, f'Best_Higher_region_{region}.pt')
+        else:
+            model_config['lower_path'] = os.path.join(args.model_dir, f'Lower_region_{region}.pt')
+            model_config['higher_path'] = os.path.join(args.model_dir, f'Higher_region_{region}.pt')
+        model = MultiModel(model_config, device, type_model=type_model).to(device)
+
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
