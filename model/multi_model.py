@@ -6,7 +6,7 @@ from torch.nn import functional as F
 TYPE_MODEL = ['Hybrid']
 class MultiModel(nn.Module):
     def __init__(self,model_config, device, type_model=None):
-        super(MultiModel,self).__init__()
+        super().__init__()
         assert type_model in TYPE_MODEL
         self.num_classes = model_config['num_classes']
         self.num_outputs = model_config['num_outputs']

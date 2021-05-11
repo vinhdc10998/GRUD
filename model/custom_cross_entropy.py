@@ -3,7 +3,7 @@ from torch.nn import functional as F
 
 class CustomCrossEntropyLoss(nn.Module):
     def __init__(self, gamma=0):
-        super(CustomCrossEntropyLoss, self).__init__()
+        super().__init__()
         self.gamma = gamma
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
 
