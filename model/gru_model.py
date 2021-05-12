@@ -24,6 +24,10 @@ class ResidualBlock(nn.Module):
     def forward(self, x):
         residual = x
         x, state = self.blocks_1(x)
+        if self.residual_connection: 
+            x += residual
+            
+        residual = x
         x, state = self.blocks_2(x, state)
         if self.residual_connection: 
             x += residual
@@ -58,13 +62,6 @@ class GRULayer(nn.Module):
     def forward(self, x):
         x = self.blocks(x)
         return x
-
-            
-    @staticmethod
-    def _create_gru_cell(input_size, hidden_units, num_layers):
-        gru = [nn.GRU(input_size, hidden_units, bidirectional=True)] # First layer
-        gru += [nn.GRU(hidden_units*2, hidden_units, bidirectional=True) for _ in range(num_layers-1)] # 2 -> num_layers
-        return gru
     
 class GRUModel(nn.Module):
     def __init__(self, model_config, device, type_model, *args, **kwargs):
@@ -74,7 +71,7 @@ class GRUModel(nn.Module):
         self.num_classes = model_config['num_classes']
         self.num_outputs = model_config['num_outputs']
         self.num_layers = model_config['num_layers']
-        self.num_layers = 1
+        self.num_layers = 2
         self.feature_size = model_config['feature_size']
         self.num_inputs = model_config['num_inputs']
         self.output_points_fw = model_config['output_points_fw']
@@ -101,12 +98,6 @@ class GRUModel(nn.Module):
             self.output_points_fw,
             self.output_points_bw
         ))
-
-    @staticmethod
-    def _create_gru_cell(input_size, hidden_units, num_layers):
-        gru = [nn.GRU(input_size, hidden_units, bidirectional=True)] # First layer
-        gru += [nn.GRU(hidden_units*2, hidden_units, bidirectional=True) for _ in range(num_layers-1)] # 2 -> num_layers
-        return gru
     
     @staticmethod
     def _create_linear_list(hidden_units, num_classes, output_points_fw, output_points_bw):
