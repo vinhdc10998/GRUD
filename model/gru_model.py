@@ -58,13 +58,6 @@ class GRULayer(nn.Module):
     def forward(self, x):
         x = self.blocks(x)
         return x
-
-            
-    @staticmethod
-    def _create_gru_cell(input_size, hidden_units, num_layers):
-        gru = [nn.GRU(input_size, hidden_units, bidirectional=True)] # First layer
-        gru += [nn.GRU(hidden_units*2, hidden_units, bidirectional=True) for _ in range(num_layers-1)] # 2 -> num_layers
-        return gru
     
 class GRUModel(nn.Module):
     def __init__(self, model_config, device, type_model, *args, **kwargs):
@@ -74,7 +67,6 @@ class GRUModel(nn.Module):
         self.num_classes = model_config['num_classes']
         self.num_outputs = model_config['num_outputs']
         self.num_layers = model_config['num_layers']
-        self.num_layers = 1
         self.feature_size = model_config['feature_size']
         self.num_inputs = model_config['num_inputs']
         self.output_points_fw = model_config['output_points_fw']
@@ -94,6 +86,12 @@ class GRUModel(nn.Module):
             activation='none',
             *args, **kwargs
         )
+
+        # self.gru = nn.ModuleList(self._create_gru_cell(
+        #     self.feature_size, 
+        #     self.hidden_units,
+        #     self.num_layers
+        # ))
 
         self.list_linear = nn.ModuleList(self._create_linear_list(
             self.hidden_units,
