@@ -35,6 +35,10 @@ def get_argument():
                         dest='best_model', help='Get best model to eval')
     parser.add_argument('--test-dir', type=str, default='../Dataset/test_100_samples_GT', required=False,
                         dest='test_dir', help='test data folder')
+    parser.add_argument('--resume', action='store_true',
+                        dest='resume', help='resume train model')
+    parser.add_argument('--check-point-dir', type=str, default='model/check_point', required=False,
+                        dest='check_point_dir', help='resume train model')
 
     args = parser.parse_args()
     return args
