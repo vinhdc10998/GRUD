@@ -73,6 +73,18 @@ def save_model(model, region, type_model, path, best=False):
         filename = os.path.join(path, f'Best_{type_model}_region_{region}.pt')
     torch.save(model.state_dict(), filename)
 
+def save_check_point(model, optimizer, epochs, region, type_model, path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    else:
+        os.remove(os.path.join(path, os.listdir(path)[-1]))
+    filename = os.path.join(path, f'{type_model}_region_{region}_checkpoint_{epochs}.pt')
+    torch.save({
+            'epoch': epochs,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            }, filename)
+
 def get_device(gpu=False):
     if gpu == True:
         device = "cuda" if torch.cuda.is_available() else "cpu"
