@@ -41,10 +41,9 @@ def run(dataloader, model_config, args, region):
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
-    print(model)
     loss_fn = CustomCrossEntropyLoss(gamma)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.5)
     # early_stopping = EarlyStopping(patience=10)
 
     #Start train
