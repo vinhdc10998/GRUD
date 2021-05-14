@@ -77,7 +77,7 @@ def run(dataloader, model_config, args, region):
             best_epoch = epoch
             save_model(model, region, type_model, output_model_dir, best=True)
 
-        if epoch % 5 == 0 and epoch > 0:
+        if epoch % 300 == 0 and epoch > 0:
             save_check_point(model, optimizer, epoch, region, type_model, check_point_dir)
 
         # Early stopping
