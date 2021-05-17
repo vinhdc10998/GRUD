@@ -11,3 +11,4 @@ git-actions-practice/
 
 #weights model
 model/weights/
+model/check_point/
