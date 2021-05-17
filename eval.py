@@ -2,6 +2,7 @@ import os
 import json
 import torch
 from model.single_model import SingleModel
+from model.multi_model import MultiModel
 from model.custom_cross_entropy import CustomCrossEntropyLoss
 
 from data.dataset import RegionDataset
@@ -20,9 +21,26 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     a1_freq_list = dataset.a1_freq_list
     gamma = args.gamma if type_model == 'Higher' else -args.gamma
 
+
+    #Init Model
+    if type_model in ['Lower', 'Higher']:
+        gamma = args.gamma if type_model == 'Higher' else -args.gamma
+        model = SingleModel(model_config, device, type_model=type_model).to(device) 
+
+    elif type_model in ['Hybrid']:
+        gamma = 0
+        if args.best_model: 
+            model_config['lower_path'] = os.path.join(args.model_dir, f'Best_Lower_region_{region}.pt')
+            model_config['higher_path'] = os.path.join(args.model_dir, f'Best_Higher_region_{region}.pt')
+        else:
+            model_config['lower_path'] = os.path.join(args.model_dir, f'Lower_region_{region}.pt')
+            model_config['higher_path'] = os.path.join(args.model_dir, f'Higher_region_{region}.pt')
+        
+        model = MultiModel(model_config, device, type_model=type_model).to(device)
+    # model = SingleModel(model_config, device, type_model=type_model).to(device)
+
     #Init Model
     loss_fn = CustomCrossEntropyLoss(gamma)
-    model = SingleModel(model_config, device, type_model=type_model).to(device)
     if args.best_model:
         loaded_model = torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt'),map_location=torch.device(device))
     else:
@@ -31,8 +49,10 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     print(f"Loaded {type_model}_{region} model")
     test_loss, _r2_score, (predictions, labels) = evaluation(dataloader, model, device, loss_fn)
     print(f"[Evaluate] Loss: {test_loss} \t R2 Score: {_r2_score}")
-    write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
-    draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=30)
+    # write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
+    write_gen(labels, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
+    
+    # draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=30)
 
 def main():
     args = get_argument()

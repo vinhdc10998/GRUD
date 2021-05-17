@@ -98,26 +98,25 @@ def get_device(gpu=False):
     return device
 
 def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_prefix, ground_truth=False):
-    output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}.gen")
     if ground_truth:
         output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}_GT.gen")
+        # print(output_prefix)
+    else:
+        output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}.gen")
+
 
     mkdir(os.path.dirname(output_prefix))
     with open(output_prefix, 'wt') as fp:
         for allele_probs, site_info in zip(predictions.T, imp_site_info_list):
-            line = '--- %s %s %s %s ' \
-                    % (site_info.id, site_info.position,
-                        site_info.a0, site_info.a1)
-            if ground_truth:
-                a1_freq = site_info.a1_freq
-                if site_info.a1_freq > 0.5:
-                    a1_freq = 1. - site_info.a1_freq
-                    if a1_freq == 0:
-                        a1_freq = 0.0001
-                line = '--- %s %s %s %s %f ' \
-                    % (site_info.id, site_info.position,
-                        site_info.a0, site_info.a1, a1_freq)
-            
+            a1_freq = site_info.a1_freq
+            if site_info.a1_freq > 0.5:
+                a1_freq = 1. - site_info.a1_freq
+                if a1_freq == 0:
+                    a1_freq = 0.0001
+            line = '--- %s %s %s %s %f ' \
+                % (site_info.id, site_info.position,
+                    site_info.a0, site_info.a1, a1_freq)
+        
             # alleles = []
             # for allele_index in range(0, len(allele_probs), 2):
             #     alleles.append(allele_probs[allele_index].item() + allele_probs[allele_index+1].item())
