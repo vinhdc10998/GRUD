@@ -15,14 +15,15 @@ class MultiModel(nn.Module):
         self.lowerModel = GRUModel(model_config, device, type_model='Lower')
         self.higherModel = GRUModel(model_config, device, type_model='Higher')
 
-        self.lowerModel.load_state_dict(self.get_gru_layer(model_config['lower_path'], device))
-        self.higherModel.load_state_dict(self.get_gru_layer(model_config['higher_path'], device))
+        if self.train():
+            self.lowerModel.load_state_dict(self.get_gru_layer(model_config['lower_path'], device))
+            self.higherModel.load_state_dict(self.get_gru_layer(model_config['higher_path'], device))
 
-        for param in self.lowerModel.parameters():
-            param.requires_grad = False
-        for param in self.higherModel.parameters():
-            param.requires_grad = False
-
+            for param in self.lowerModel.parameters():
+                param.requires_grad = False
+            for param in self.higherModel.parameters():
+                param.requires_grad = False
+    
         self.linear = nn.ModuleList([nn.Linear(self.num_classes*2, self.num_classes) for _ in range(self.num_outputs)])
 
 
