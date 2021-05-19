@@ -9,7 +9,7 @@ from data.dataset import RegionDataset
 from torch.utils.data import DataLoader
 from utils.argument_parser import get_argument
 from utils.plot_chart import draw_chart
-from utils.imputation import train, evaluation, get_device, save_model
+from utils.imputation import save_check_point, train, evaluation, get_device, save_model
 torch.manual_seed(42)
 
 def run(dataloader, model_config, args, region):
@@ -43,14 +43,22 @@ def run(dataloader, model_config, args, region):
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = CustomCrossEntropyLoss(gamma)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
-    # early_stopping = EarlyStopping(patience=10)
-
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2000, gamma=0.5)
+    early_stopping = EarlyStopping(patience=10)
+    check_point_dir = args.check_point_dir
     #Start train
     _r2_score_list, loss_values = [], [] #train
     r2_val_list, val_loss_list = [], [] #validation
-    best_val_loss = 99999999 
-    for t in range(epochs):
+    best_val_loss = 99999999
+    start_epochs = 1
+    if args.resume and os.path.exists(check_point_dir):
+        filename = os.path.join(check_point_dir, os.listdir(check_point_dir)[-1])
+        checkpoint = torch.load(filename)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epochs = checkpoint['epoch']+1
+
+    for epoch in range(start_epochs, epochs+1):
         train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
         val_loss, r2_val, _ = evaluation(val_loader, model, device, loss_fn)
         test_loss, r2_test, _ = evaluation(test_loader, model, device, loss_fn)
@@ -58,7 +66,7 @@ def run(dataloader, model_config, args, region):
         _r2_score_list.append(r2_train)
         r2_val_list.append(r2_val)
         val_loss_list.append(val_loss)
-        print(f"[REGION {region} - EPOCHS {t+1}]\
+        print(f"[REGION {region} - EPOCHS {epoch}]\
             lr: {optimizer.param_groups[0]['lr']}\
                 train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f},\
                     val_loss: {val_loss:>7f}, val_r2: {r2_val:>7f},\
@@ -66,16 +74,19 @@ def run(dataloader, model_config, args, region):
         # Save best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            best_epochs = t+1
+            best_epoch = epoch
             save_model(model, region, type_model, output_model_dir, best=True)
 
-        #Early stopping
-        # if args.early_stopping:
-        #     early_stopping(val_loss)
-        #     if early_stopping.early_stop:
-        #         break
+        if epoch % 300 == 0 and epoch > 0:
+            save_check_point(model, optimizer, epoch, region, type_model, check_point_dir)
 
-    print(f"Best model at epochs {best_epochs} with loss: {best_val_loss}")
+        # Early stopping
+        if args.early_stopping:
+            early_stopping(val_loss)
+            if early_stopping.early_stop:
+                break
+
+    print(f"Best model at epoch {best_epoch} with loss: {best_val_loss}")
     draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, region, type_model)
     save_model(model, region, type_model, output_model_dir)
 
