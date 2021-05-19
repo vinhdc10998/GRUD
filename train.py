@@ -43,8 +43,8 @@ def run(dataloader, model_config, args, region):
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = CustomCrossEntropyLoss(gamma)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.5)
-    # early_stopping = EarlyStopping(patience=10)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2000, gamma=0.5)
+    early_stopping = EarlyStopping(patience=500)
 
     #Start train
     _r2_score_list, loss_values = [], [] #train
@@ -70,10 +70,10 @@ def run(dataloader, model_config, args, region):
             save_model(model, region, type_model, output_model_dir, best=True)
 
         #Early stopping
-        # if args.early_stopping:
-        #     early_stopping(val_loss)
-        #     if early_stopping.early_stop:
-        #         break
+        if args.early_stopping:
+            early_stopping(val_loss)
+            if early_stopping.early_stop:
+                break
 
     print(f"Best model at epochs {best_epochs} with loss: {best_val_loss}")
     draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, region, type_model)
