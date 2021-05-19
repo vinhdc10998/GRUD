@@ -81,7 +81,6 @@ def run(dataloader, model_config, args, region):
         if epoch % 300 == 0 and epoch > 0:
             save_check_point(model, optimizer, epoch, region, type_model, check_point_dir)
 
-        # Early stopping
         #Early stopping
         if args.early_stopping:
             early_stopping(val_loss)
