@@ -53,7 +53,7 @@ def run(dataloader, model_config, args, region):
     start_epochs = 1
     if args.resume and os.path.exists(check_point_dir):
         filename = os.path.join(check_point_dir, os.listdir(check_point_dir)[-1])
-        checkpoint = torch.load(filename)
+        checkpoint = torch.load(filename, map_location=torch.device(device))
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epochs = checkpoint['epoch']+1
