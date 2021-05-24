@@ -45,7 +45,7 @@ def run(dataloader, model_config, args, region):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2000, gamma=0.5)
     check_point_dir = args.check_point_dir
-    early_stopping = EarlyStopping(patience=500)
+    early_stopping = EarlyStopping(patience=100)
 
     #Start train
     _r2_score_list, loss_values = [], [] #train
@@ -85,8 +85,11 @@ def run(dataloader, model_config, args, region):
         if args.early_stopping:
             early_stopping(val_loss)
             if early_stopping.early_stop:
-                break
-
+                if optimizer.param_groups[0]['lr'] < 1e-6:
+                    break
+                optimizer.param_groups[0]['lr'] *= 0.5
+                early_stopping = EarlyStopping(patience=100)
+    
     print(f"Best model at epoch {best_epoch} with loss: {best_val_loss}")
     draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, region, type_model)
     save_model(model, region, type_model, output_model_dir)

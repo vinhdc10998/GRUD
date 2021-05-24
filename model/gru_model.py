@@ -3,9 +3,9 @@ from torch import nn
 
 def activation_func(activation):
     return  nn.ModuleDict([
-        ['relu', nn.ReLU(inplace=True)],
-        ['leaky_relu', nn.LeakyReLU(negative_slope=0.01, inplace=True)],
-        ['selu', nn.SELU(inplace=True)],
+        ['relu', nn.ReLU()],
+        ['leaky_relu', nn.LeakyReLU(negative_slope=0.01)],
+        ['selu', nn.SELU()],
         ['none', nn.Identity()]
     ])[activation]
 
@@ -19,6 +19,7 @@ class ResidualBlock(nn.Module):
 
         self.blocks_1 = nn.Identity()
         self.blocks_2 = nn.Identity()
+        self.batch_norm = nn.Identity()
         self.activate = activation_func(activation)
     
     def forward(self, x):
@@ -26,7 +27,8 @@ class ResidualBlock(nn.Module):
         x, state = self.blocks_1(x)
         x, state = self.blocks_2(x, state)
         if self.residual_connection: 
-            x += residual
+            x = x.clone() + residual
+        x=torch.transpose(self.batch_norm(torch.transpose(x,1,2)),1,2)
         x = self.activate(x)
         return x
 
@@ -37,6 +39,7 @@ class ResNetBasicBlock(ResidualBlock):
         self.out_channels = out_channels
         self.blocks_1 = nn.GRU(self.in_channels, self.out_channels, bidirectional=True)
         self.blocks_2 = nn.GRU(self.out_channels*2, self.out_channels, bidirectional=True)
+        self.batch_norm = nn.BatchNorm1d(self.out_channels*2)
 
 class GRULayer(nn.Module):
     """
@@ -83,7 +86,7 @@ class GRUModel(nn.Module):
             self.num_layers, 
             self.type_model,
             block=ResNetBasicBlock, 
-            activation='none',
+            activation='leaky_relu',
             *args, **kwargs
         )
 
