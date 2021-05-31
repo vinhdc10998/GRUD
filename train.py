@@ -43,7 +43,7 @@ def run(dataloader, model_config, args, region):
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = CustomCrossEntropyLoss(gamma)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2000, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=600, gamma=0.5)
     check_point_dir = args.check_point_dir
     early_stopping = EarlyStopping(patience=100)
 
