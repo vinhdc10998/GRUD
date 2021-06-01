@@ -101,7 +101,6 @@ def main():
     root_dir = args.root_dir
     model_config_dir = args.model_config_dir
     batch_size = args.batch_size
-    epochs = args.epochs
     chromosome = args.chromosome
     regions = args.regions.split("-")
     test_dir = args.test_dir

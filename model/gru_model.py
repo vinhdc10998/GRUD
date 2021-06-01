@@ -13,28 +13,40 @@ class ResidualBlock(nn.Module):
     '''
     A residual block
     '''
-    def __init__(self, residual_connection=True, activation='none'):
+    def __init__(self, out_channels, residual_connection=True, activation='none'):
         super(ResidualBlock, self).__init__()
         self.residual_connection = residual_connection
 
+        self.hidden_units = out_channels
         self.blocks_1 = nn.Identity()
         self.blocks_2 = nn.Identity()
-        self.batch_norm = nn.Identity()
+        self.batch_norm_1 = nn.Identity()
+        self.batch_norm_2 = nn.Identity()
+
         self.activate = activation_func(activation)
     
     def forward(self, x):
+        hidden = self.init_hidden(x.shape[1])
         residual = x
-        x, state = self.blocks_1(x)
+        x, state = self.blocks_1(x, hidden)
+        x=torch.transpose(self.batch_norm_1(torch.transpose(x,1,2)),1,2)
+        x = self.activate(x)
         x, state = self.blocks_2(x, state)
+        x=torch.transpose(self.batch_norm_2(torch.transpose(x,1,2)),1,2)
         if self.residual_connection: 
             x = x.clone() + residual
-        x=torch.transpose(self.batch_norm(torch.transpose(x,1,2)),1,2)
         x = self.activate(x)
         return x
 
+    def init_hidden(self, batch):
+        weight = next(self.parameters()).data
+        hidden = weight.new(2, batch, self.hidden_units).zero_()
+        return hidden
+
+
 class ResNetBasicBlock(ResidualBlock):
     def __init__(self, in_channels, out_channels, *args, **kwargs):
-        super(ResNetBasicBlock, self).__init__(*args, **kwargs)
+        super(ResNetBasicBlock, self).__init__(out_channels, *args, **kwargs)
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.blocks_1 = nn.GRU(self.in_channels, self.out_channels, bidirectional=True)
@@ -86,7 +98,7 @@ class GRUModel(nn.Module):
             self.num_layers, 
             self.type_model,
             block=ResNetBasicBlock, 
-            activation='leaky_relu',
+            activation='selu',
             *args, **kwargs
         )
 
@@ -123,9 +135,9 @@ class GRUModel(nn.Module):
         '''
             return logits_list(g)  in paper
         '''
-        batch_size = x.shape[0]
+        # batch_size = x.shape[0]
         _input = torch.swapaxes(x, 0, 1)
-        gru_inputs = self.linear(_input)
+        gru_inputs = self.linear(_input.float())
         # outputs, _ = self._compute_gru(self.gru, gru_inputs, batch_size)
 
         outputs = self.gru(gru_inputs)
