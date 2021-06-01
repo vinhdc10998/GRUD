@@ -137,7 +137,7 @@ class GRUModel(nn.Module):
         '''
         # batch_size = x.shape[0]
         _input = torch.swapaxes(x, 0, 1)
-        gru_inputs = self.linear(_input.long())
+        gru_inputs = self.linear(_input.float())
         # outputs, _ = self._compute_gru(self.gru, gru_inputs, batch_size)
 
         outputs = self.gru(gru_inputs)
