@@ -32,9 +32,9 @@ class ResidualBlock(nn.Module):
         x=torch.transpose(self.batch_norm_1(torch.transpose(x,1,2)),1,2)
         x = self.activate(x)
         x, state = self.blocks_2(x, state)
-        x=torch.transpose(self.batch_norm_2(torch.transpose(x,1,2)),1,2)
         if self.residual_connection: 
             x = x.clone() + residual
+        x=torch.transpose(self.batch_norm_2(torch.transpose(x,1,2)),1,2)
         x = self.activate(x)
         return x
 
@@ -51,7 +51,9 @@ class ResNetBasicBlock(ResidualBlock):
         self.out_channels = out_channels
         self.blocks_1 = nn.GRU(self.in_channels, self.out_channels, bidirectional=True)
         self.blocks_2 = nn.GRU(self.out_channels*2, self.out_channels, bidirectional=True)
-        self.batch_norm = nn.BatchNorm1d(self.out_channels*2)
+        self.batch_norm_1 = nn.BatchNorm1d(self.out_channels*2)
+        self.batch_norm_2 = nn.BatchNorm1d(self.out_channels*2)
+
 
 class GRULayer(nn.Module):
     """
@@ -98,7 +100,7 @@ class GRUModel(nn.Module):
             self.num_layers, 
             self.type_model,
             block=ResNetBasicBlock, 
-            activation='selu',
+            activation='leaky_relu',
             *args, **kwargs
         )
 
