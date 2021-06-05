@@ -17,6 +17,10 @@ class GRUModel(nn.Module):
         self.device = device
 
         self.linear = nn.Linear(self.input_dim, self.feature_size, bias=True)
+        
+        self.batch_norm = nn.BatchNorm1d(self.feature_size)
+        self.leaky_relu = nn.LeakyReLU(negative_slope=0.01)
+        self.batch_norm_list = nn.ModuleList([nn.BatchNorm1d(self.hidden_units*2) for _ in range(self.num_layers)])
 
         self.gru = nn.ModuleList(self._create_gru_cell(
             self.feature_size, 
@@ -53,6 +57,9 @@ class GRUModel(nn.Module):
         batch_size = x.shape[0]
         _input = torch.swapaxes(x, 0, 1)
         gru_inputs = self.linear(_input)
+        gru_inputs=torch.transpose(self.batch_norm(torch.transpose(gru_inputs,1,2)),1,2)
+        gru_inputs = self.leaky_relu(gru_inputs)
+        
         outputs, _ = self._compute_gru(self.gru, gru_inputs, batch_size)
 
         logit_list = []
@@ -76,10 +83,12 @@ class GRUModel(nn.Module):
         hidden = self.init_hidden(batch_size)
         for i, gru in enumerate(GRUs):
             output, state = gru(_input, hidden)
+            output = torch.transpose(self.batch_norm_list[i](torch.transpose(output,1,2)),1,2)
             if self.type_model == 'Lower' and i > 0: #residual connection
                 _input = _input.clone() + output
             else:
                 _input = output
+            _input = self.leaky_relu(_input)
             hidden = state
         logits, state = _input, hidden
         return logits, state
