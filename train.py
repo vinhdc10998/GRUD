@@ -112,7 +112,7 @@ def main():
             model_config = json.load(json_config)
             model_config['region'] = region
         train_val_set = RegionDataset(root_dir, region, chromosome, dataset=args.dataset)
-        test_set = RegionDataset(test_dir, region, 'chr22')
+        test_set = RegionDataset(test_dir, region, chromosome, dataset=args.dataset)
         train_size = int(0.8 * len(train_val_set))
         val_size = len(train_val_set) - train_size
         train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])

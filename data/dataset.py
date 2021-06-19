@@ -9,10 +9,10 @@ class RegionDataset(Dataset):
     def __init__(self, root_dir, region=1, chromosome='chr22', dataset=''):
         if dataset:
             number_of_regions = str(int(len(os.listdir(root_dir))/5))
-            hap_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_hg38_true_{str(region).zfill(len(number_of_regions))}.hap.gz')
-            legend_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_hg38_true_{str(region).zfill(len(number_of_regions))}.legend.gz')
-            label_hap_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_hg38_true_{str(region).zfill(len(number_of_regions))}_gtrue.hap.gz')
-            label_legend_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_hg38_true_{str(region).zfill(len(number_of_regions))}_gtrue.legend.gz')
+            hap_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_true_{str(region).zfill(len(number_of_regions))}.hap.gz')
+            legend_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_true_{str(region).zfill(len(number_of_regions))}.legend.gz')
+            label_hap_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_true_{str(region).zfill(len(number_of_regions))}_gtrue.hap.gz')
+            label_legend_dir = os.path.join(root_dir, f'{dataset}_{chromosome}_true_{str(region).zfill(len(number_of_regions))}_gtrue.legend.gz')
             self.haplotype_list, self.label_haplotype_list, self.a1_freq_list =\
                 load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir)
             print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape, self.a1_freq_list.shape)
