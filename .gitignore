@@ -8,6 +8,7 @@ __pycache__/
 images/
 results/
 git-actions-practice/
+train_data/
 
 #weights model
 model/weights/
