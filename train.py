@@ -1,8 +1,8 @@
-from model.multi_model import MultiModel
 import os
 import json
 import torch
 from model.custom_cross_entropy import CustomCrossEntropyLoss
+from model.multi_model import MultiModel
 from model.single_model import SingleModel
 from model.early_stopping import EarlyStopping
 from data.dataset import RegionDataset
@@ -11,6 +11,10 @@ from utils.argument_parser import get_argument
 from utils.plot_chart import draw_chart
 from utils.imputation import save_check_point, train, evaluation, get_device, save_model
 # torch.manual_seed(42)
+
+SINGLE_MODEL = ['Higher', 'Lower']
+MULTI_MODEL = ['Hybrid']
+
 
 def run(dataloader, model_config, args, region):
     device = get_device(args.gpu)
@@ -24,11 +28,11 @@ def run(dataloader, model_config, args, region):
     test_loader = dataloader['test']
 
     #Init Model
-    if type_model in ['Lower', 'Higher']:
+    if type_model in SINGLE_MODEL:
         gamma = args.gamma if type_model == 'Higher' else -args.gamma
         model = SingleModel(model_config, device, type_model=type_model).to(device) 
 
-    elif type_model in ['Hybrid']:
+    elif type_model in MULTI_MODEL:
         gamma = 0
         if args.best_model: 
             model_config['lower_path'] = os.path.join(args.model_dir, f'Best_Lower_region_{region}.pt')
@@ -102,18 +106,13 @@ def main():
     regions = args.regions.split("-")
     test_dir = args.test_dir
 
-    with open(os.path.join(root_dir, 'index.txt'), 'w+') as index_file:
-        index_file.write("0")
-    with open(os.path.join(test_dir, 'index.txt'), 'w+') as index_file:
-        index_file.write("0")
-
     for region in range(int(regions[0]), int(regions[-1])+1):
         print(f"----------Training Region {region}----------")
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
             model_config['region'] = region
-        train_val_set = RegionDataset(root_dir, region, chromosome)
-        test_set = RegionDataset(test_dir, region, chromosome)
+        train_val_set = RegionDataset(root_dir, region, chromosome, dataset=args.dataset)
+        test_set = RegionDataset(test_dir, region, 'chr22')
         train_size = int(0.8 * len(train_val_set))
         val_size = len(train_val_set) - train_size
         train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])
