@@ -59,6 +59,7 @@ class GRUModel(nn.Module):
         gru_inputs = self.linear(_input)
         gru_inputs=torch.transpose(self.batch_norm(torch.transpose(gru_inputs,1,2)),1,2)
         gru_inputs = self.leaky_relu(gru_inputs)
+        print("2")
         
         outputs, _ = self._compute_gru(self.gru, gru_inputs)
         logit_list = []
