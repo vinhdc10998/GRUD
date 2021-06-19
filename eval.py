@@ -49,8 +49,9 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     print(f"Loaded {type_model}_{region} model")
     test_loss, _r2_score, (predictions, labels) = evaluation(dataloader, model, device, loss_fn)
     print(f"[Evaluate] Loss: {test_loss} \t R2 Score: {_r2_score}")
-    # write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
-    write_gen(labels, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
+    write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
+
+    # write_gen(labels, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
     
     # draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=30)
 
