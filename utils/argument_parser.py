@@ -39,6 +39,7 @@ def get_argument():
                         dest='resume', help='resume train model')
     parser.add_argument('--check-point-dir', type=str, default='model/check_point', required=False,
                         dest='check_point_dir', help='resume train model')
-
+    parser.add_argument('--dataset', type=str, default='', required=False,
+                        dest='dataset', help='run custom dataset ( default: preprocessed data of paper)')
     args = parser.parse_args()
     return args
