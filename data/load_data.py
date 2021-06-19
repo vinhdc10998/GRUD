@@ -90,20 +90,20 @@ def load_lines(filename,header=False):
             
     return header_line, np.array(lines)
 
+def one_hot(allele, a1_freq):
+    if allele is None:
+        return [1. - a1_freq, a1_freq]
+    return [1 - allele, allele]
+
+def convert_maf(a1_freq):
+    if a1_freq > 0.5:
+        res = 1. - a1_freq
+        if res == 0.:
+            res = 0.00001
+        return res
+    return a1_freq
+
 def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_info_list, index_start):
-    def one_hot(allele, a1_freq):
-        if allele is None:
-            return [1. - a1_freq, a1_freq]
-        return [1 - allele, allele]
-
-    def convert_maf(a1_freq):
-        if a1_freq > 0.5:
-            res = 1. - a1_freq
-            if res == 0.:
-                res = 0.00001
-            return res
-        return a1_freq
-
     site_info_dict = {}
     marker_site_count = 0
     label_site_count = 0
@@ -214,4 +214,37 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
     true_haplotype_list = torch.tensor(true_haplotype_list).T
     haplotype_list = torch.tensor(haplotype_list)
     a1_freq_list = torch.tensor(a1_freq_list)
+    return haplotype_list, true_haplotype_list, a1_freq_list
+
+def load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir):
+    true_haplotype_list = []
+    a1_freq_list = []
+    haplotype_list = []
+
+    with reading(hap_dir) as fp:
+        for i, line in enumerate(fp):
+            items = line.rstrip().split()
+            tmp = []
+            for allele in items:
+                tmp.append(one_hot(int(allele), None))
+            haplotype_list.append(list(map(list, tmp)))
+
+    with reading(label_hap_dir) as fp: 
+        for i, line in enumerate(fp):
+            items = line.rstrip().split()            
+            true_haplotype_list.append(list(map( int, items)))
+
+    with reading(label_legend_dir) as fp:
+        header = fp.readline().rstrip().split()
+        af_col = header.index("af")
+        for line in fp:
+            items = line.rstrip().split()
+            maf = convert_maf(float(items[af_col]))
+            a1_freq_list.append(maf)
+
+
+    haplotype_list = torch.tensor(haplotype_list, dtype=torch.float).swapaxes(0, 1)
+    true_haplotype_list = torch.tensor(true_haplotype_list, dtype=torch.long).T
+    a1_freq_list = torch.tensor(a1_freq_list, dtype=torch.float)
+
     return haplotype_list, true_haplotype_list, a1_freq_list
