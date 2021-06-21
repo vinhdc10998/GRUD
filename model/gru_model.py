@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import math
 class GRUModel(nn.Module):
     def __init__(self, model_config, device, type_model):
         super(GRUModel,self).__init__()
@@ -44,7 +45,7 @@ class GRUModel(nn.Module):
     def _create_linear_list(hidden_units, num_classes, output_points_fw, output_points_bw):
         list_linear = []
         for (t_fw, t_bw) in (zip(output_points_fw, output_points_bw)):
-            if (t_fw is not None) and (t_bw is not None):
+            if (t_fw is not None) and (t_bw is not None) and (not math.isnan(t_fw)) and (not math.isnan(t_bw)):
                 list_linear.append(nn.Linear(hidden_units*2, num_classes, bias=True)) 
             else:
                 list_linear.append(nn.Linear(hidden_units, num_classes, bias=True))
@@ -65,10 +66,10 @@ class GRUModel(nn.Module):
         logit_list = []
         for index, (t_fw, t_bw) in enumerate(zip(self.output_points_fw, self.output_points_bw)):
             gru_output = []
-            if t_fw is not None:
-                gru_output.append(outputs[t_fw, :, :self.hidden_units]) 
-            if t_bw is not None:
-                gru_output.append(outputs[t_bw, :, self.hidden_units:])
+            if t_fw is not None and not math.isnan(t_fw):
+                gru_output.append(outputs[int(t_fw), :, :self.hidden_units]) 
+            if t_bw is not None and not math.isnan(t_bw):
+                gru_output.append(outputs[int(t_bw), :, self.hidden_units:])
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
             logit_list.append(logit)
@@ -92,3 +93,26 @@ class GRUModel(nn.Module):
             hidden = state
         logits, state = _input, hidden
         return logits, state
+
+# /** 
+# *                   _ooOoo_
+# *                  o8888888o
+# *                  88" . "88
+# *                  (| -_- |)
+# *                  O\  =  /O
+# *               ____/`---'\____
+# *             .'  \\|     |//  `.
+# *            /  \\|||  :  |||//  \
+# *           /  _||||| -:- |||||-  \
+# *           |   | \\\  -  /// |   |
+# *           | \_|  ''\---/''  |   |
+# *           \  .-\__  `-`  ___/-. /
+# *         ___`. .'  /--.--\  `. . __
+# *      ."" '<  `.___\_<|>_/___.'  >'"".
+# *     | | :  `- \`.;`\ _ /`;.`/ - ` : | |
+# *     \  \ `-.   \_ __\ /__ _/   .-` /  /
+# *======`-.____`-.___\_____/___.-`____.-'======
+# *                   `=---='
+# *^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# * Buddha blessing never BUG
+# */

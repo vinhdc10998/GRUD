@@ -48,7 +48,7 @@ def run(dataloader, model_config, args, region):
     loss_fn = CustomCrossEntropyLoss(gamma)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=600, gamma=0.5)
-    early_stopping = EarlyStopping(patience=50)
+    early_stopping = EarlyStopping(patience=30)
     check_point_dir = args.check_point_dir
     #Start train
     _r2_score_list, loss_values = [], [] #train
@@ -81,7 +81,7 @@ def run(dataloader, model_config, args, region):
             best_epoch = epoch
             save_model(model, region, type_model, output_model_dir, best=True)
 
-        if epoch % 300 == 0 and epoch > 0:
+        if epoch % 10 == 0 and epoch > 0:
             save_check_point(model, optimizer, epoch, region, type_model, check_point_dir)
 
         # Early stopping
@@ -91,7 +91,7 @@ def run(dataloader, model_config, args, region):
                 if optimizer.param_groups[0]['lr'] < 1e-6:
                     break
                 optimizer.param_groups[0]['lr'] *= 0.5
-                early_stopping = EarlyStopping(patience=50)
+                early_stopping = EarlyStopping(patience=30)
 
     print(f"Best model at epoch {best_epoch} with loss: {best_val_loss}")
     draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, region, type_model)
