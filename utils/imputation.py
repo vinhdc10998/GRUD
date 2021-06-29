@@ -99,7 +99,7 @@ def get_device(gpu=False):
 
 def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_prefix, ground_truth=False):
     if ground_truth:
-        output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}_GT.gen")
+        output_prefix = os.path.join(output_prefix, f"ground_truth_{chr}_{region}.gen")
         # print(output_prefix)
     else:
         output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}.gen")
@@ -107,7 +107,9 @@ def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_p
 
     mkdir(os.path.dirname(output_prefix))
     with open(output_prefix, 'wt') as fp:
+        # print(predictions.T.shape,  len(imp_site_info_list))
         for allele_probs, site_info in zip(predictions.T, imp_site_info_list):
+            # print("222222222222")
             a1_freq = site_info.a1_freq
             if site_info.a1_freq > 0.5:
                 a1_freq = 1. - site_info.a1_freq
@@ -116,7 +118,7 @@ def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_p
             line = '--- %s %s %s %s %f ' \
                 % (site_info.id, site_info.position,
                     site_info.a0, site_info.a1, a1_freq)
-        
+            # print(line)
             # alleles = []
             # for allele_index in range(0, len(allele_probs), 2):
             #     alleles.append(allele_probs[allele_index].item() + allele_probs[allele_index+1].item())
