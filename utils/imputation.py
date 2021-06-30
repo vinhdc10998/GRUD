@@ -3,7 +3,7 @@ import torch
 from sklearn.metrics import r2_score
 from data.load_data import mkdir
 
-def evaluation(dataloader, model, device, loss_fn):
+def evaluation(dataloader, model, device, loss):
     '''
         Evaluate model with R square score
     '''
@@ -17,9 +17,13 @@ def evaluation(dataloader, model, device, loss_fn):
             X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         
             # Compute prediction error
-            logits, prediction = model(X)
+            logit_generator, prediction, logit_discriminator = model(X)
             y_pred = torch.argmax(prediction, dim=-1).T
-            test_loss += loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T)).item()
+            test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
+            
+
+            label_discriminator = (y_pred != y).float()
+            test_loss += loss['BCEWithLogitsLoss'](logit_discriminator.T, label_discriminator).item()
 
             predictions.append(y_pred)
             labels.append(y)
@@ -31,7 +35,7 @@ def evaluation(dataloader, model, device, loss_fn):
     _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
     return test_loss, _r2_score, (predictions, labels)
 
-def train(dataloader, model, device, loss_fn, optimizer, scheduler):
+def train(dataloader, model, device, loss, optimizer, scheduler):
     '''
         Train model GRU
     '''
@@ -43,23 +47,33 @@ def train(dataloader, model, device, loss_fn, optimizer, scheduler):
 
     for batch, (X, y, a1_freq) in enumerate(dataloader):
         X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
-        
         # Compute prediction error
-        logits, prediction = model(X)
-        loss = loss_fn(logits, torch.flatten(y.T), torch.flatten(a1_freq.T))
+        logit_generator, prediction, logit_discriminator = model(X)
+        loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T))
         y_pred = torch.argmax(prediction, dim=-1).T
         
+        
+        '''
+        Loss discriminator
+            - 0 indicates the token is an original token,
+            - 1 indicates the token was replaced.
+        '''
+        label_discriminator = (y_pred != y).float()
+        loss_BCE = loss['BCEWithLogitsLoss'](logit_discriminator.T, label_discriminator)
+
+        total_loss = loss_BCE + loss_crossentropy
         predictions.append(y_pred)
         labels.append(y)
         #Backpropagation
         optimizer.zero_grad()
-        loss.backward()
+        total_loss.backward()
         optimizer.step()
-        train_loss = loss.item()
+        train_loss = total_loss.item()
 
     scheduler.step()
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
+
     n_samples = len(labels)
     _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
 
