@@ -241,7 +241,7 @@ def load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir):
             maf = convert_maf(float(items[af_col]))
             a1_freq_list.append(maf)
 
-    haplotype_list = torch.tensor(haplotype_list, dtype=torch.float).swapaxes(0, 1)
+    haplotype_list = torch.tensor(haplotype_list, dtype=torch.float).T
     true_haplotype_list = torch.tensor(true_haplotype_list, dtype=torch.long).T
     a1_freq_list = torch.tensor(a1_freq_list, dtype=torch.float)
 

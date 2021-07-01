@@ -18,12 +18,11 @@ def evaluation(dataloader, model, device, loss):
         
             # Compute prediction error
             logit_generator, prediction, logit_discriminator = model(X)
-            y_pred = torch.argmax(prediction, dim=-1).T
-            test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
+            y_pred = torch.argmax(prediction, dim=-1)
+            test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y), torch.flatten(a1_freq)).item() 
             
-
             label_discriminator = (y_pred != y).float()
-            test_loss += loss['BCEWithLogitsLoss'](logit_discriminator.T, label_discriminator).item()
+            test_loss += loss['BCEWithLogitsLoss'](logit_discriminator, label_discriminator).item()
 
             predictions.append(y_pred)
             labels.append(y)
@@ -44,14 +43,17 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
     train_loss = 0
     predictions = []
     labels = []
+    # for name, param in model.named_parameters():
+    #     if 'discriminator' in name or 'generator.linear' in name:
+    #         print(name, param.grad)
 
     for batch, (X, y, a1_freq) in enumerate(dataloader):
         X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         # Compute prediction error
         logit_generator, prediction, logit_discriminator = model(X)
-        loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T))
-        y_pred = torch.argmax(prediction, dim=-1).T
-        
+        print(logit_generator.shape, prediction.shape, logit_discriminator.shape)
+        loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y), torch.flatten(a1_freq))
+        y_pred = torch.argmax(prediction, dim=-1)
         
         '''
         Loss discriminator
@@ -59,7 +61,7 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
             - 1 indicates the token was replaced.
         '''
         label_discriminator = (y_pred != y).float()
-        loss_BCE = loss['BCEWithLogitsLoss'](logit_discriminator.T, label_discriminator)
+        loss_BCE = loss['BCEWithLogitsLoss'](logit_discriminator, label_discriminator)
 
         total_loss = loss_BCE + loss_crossentropy
         predictions.append(y_pred)
