@@ -69,12 +69,13 @@ def main():
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
             model_config = json.load(json_config)
             model_config['region'] = region
-        dataset = RegionDataset(root_dir, region, chromosome)
+        dataset = RegionDataset(root_dir, region, chromosome, dataset=args.dataset)
         testloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-        imp_site_info_list = [
-            site_info
-            for site_info in dataset.site_info_list if not site_info.array_marker_flag
-        ]
+        # imp_site_info_list = [
+        #     site_info
+        #     for site_info in dataset.site_info_list if not site_info.array_marker_flag
+        # ]
+        imp_site_info_list = []
         run(
             testloader,
             dataset,
