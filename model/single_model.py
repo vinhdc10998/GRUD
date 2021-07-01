@@ -9,7 +9,7 @@ TYPE_MODEL = ['Higher', 'Lower']
 class Discriminator(nn.Module):
     def __init__(self, model_config, activation='gelu'):
         super().__init__()
-        hidden_size = 20
+        hidden_size = model_config['num_classes']
         self.dense = nn.Linear(hidden_size, hidden_size)
         self.dense_prediction = nn.Linear(hidden_size, 1)
         self.activation = get_activation(activation)
@@ -33,10 +33,10 @@ class SingleModel(nn.Module):
 
 
     def forward(self, input_):
-        logit_prediction, logit_discriminator = self.generator(input_)
+        logit_prediction = self.generator(input_)
         logit_generator = torch.cat(logit_prediction, dim=0)
         fake_input = F.softmax(torch.stack(logit_prediction), dim=-1)
-        discriminator_logit = torch.round(torch.sign(self.discriminator(logit_prediction)+1)/2)
+        discriminator_logit = torch.round(torch.sign(self.discriminator(torch.stack(logit_prediction))+1)/2)
         return logit_generator, fake_input, discriminator_logit
     
 

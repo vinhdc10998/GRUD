@@ -8,7 +8,7 @@ class GRUModel(nn.Module):
         self.hidden_units = model_config['num_units']
         self.num_classes = model_config['num_classes']
         self.num_outputs = model_config['num_outputs']
-        self.num_layers = model_config['num_layers']
+        self.num_layers = 1
         self.feature_size = model_config['feature_size']
         self.num_inputs = model_config['num_inputs']
         self.output_points_fw = model_config['output_points_fw']
@@ -16,7 +16,6 @@ class GRUModel(nn.Module):
         self.region = model_config['region']
         self.type_model = type_model
         self.device = device
-        self.encode_size = 20
         self.linear = nn.Linear(self.input_dim, self.feature_size, bias=True)
         
         self.batch_norm = nn.BatchNorm1d(self.feature_size)
@@ -30,15 +29,9 @@ class GRUModel(nn.Module):
         ))
         self.list_linear = nn.ModuleList(self._create_linear_list(
             self.hidden_units,
-            self.encode_size,
+            self.num_classes,
             self.output_points_fw,
             self.output_points_bw
-        ))
-
-        self.list_linear_prediction = nn.ModuleList(self._create_linear_predcition_list(
-            self.encode_size,
-            self.num_classes,
-            self.num_outputs
         ))
 
     @staticmethod
@@ -46,10 +39,6 @@ class GRUModel(nn.Module):
         gru = [nn.GRU(input_size, hidden_units, bidirectional=True)] # First layer
         gru += [nn.GRU(hidden_units*2, hidden_units, bidirectional=True) for _ in range(num_layers-1)] # 2 -> num_layers
         return gru
-    
-    @staticmethod
-    def _create_linear_predcition_list(hidden_units, num_classes, num_outputs):
-        return [nn.Linear(hidden_units, num_classes) for i in range(num_outputs)]
 
     @staticmethod
     def _create_linear_list(hidden_units, num_classes, output_points_fw, output_points_bw):
@@ -74,7 +63,6 @@ class GRUModel(nn.Module):
         outputs, _ = self._compute_gru(self.gru, gru_inputs, batch_size)
         
         logit_list = []
-        input_discriminator  = []
         for index, (t_fw, t_bw) in enumerate(zip(self.output_points_fw, self.output_points_bw)):
             gru_output = []
             if t_fw is not None and not math.isnan(t_fw):
@@ -83,10 +71,8 @@ class GRUModel(nn.Module):
                 gru_output.append(outputs[int(t_bw), :, self.hidden_units:])
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
-            input_discriminator.append(logit)
-            logit = self.list_linear_prediction[index](logit)
             logit_list.append(logit)
-        return logit_list, input_discriminator
+        return logit_list
 
     def init_hidden(self, batch):
         weight = next(self.parameters()).data
