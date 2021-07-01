@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+from torch import nn
 from model.custom_cross_entropy import CustomCrossEntropyLoss
 from model.multi_model import MultiModel
 from model.single_model import SingleModel
@@ -10,7 +11,7 @@ from torch.utils.data import DataLoader
 from utils.argument_parser import get_argument
 from utils.plot_chart import draw_chart
 from utils.imputation import save_check_point, train, evaluation, get_device, save_model
-# torch.manual_seed(42)
+torch.manual_seed(42)
 
 SINGLE_MODEL = ['Higher', 'Lower']
 MULTI_MODEL = ['Hybrid']
@@ -46,9 +47,14 @@ def run(dataloader, model_config, args, region):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
     loss_fn = CustomCrossEntropyLoss(gamma)
+    loss_fct = nn.BCEWithLogitsLoss()
+    loss = {
+        'CustomCrossEntropy': loss_fn, 
+        'BCEWithLogitsLoss': loss_fct
+    }
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=600, gamma=0.5)
-    early_stopping = EarlyStopping(patience=50)
+    early_stopping = EarlyStopping(patience=30)
     check_point_dir = args.check_point_dir
     #Start train
     _r2_score_list, loss_values = [], [] #train
@@ -61,11 +67,10 @@ def run(dataloader, model_config, args, region):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epochs = checkpoint['epoch']+1
-
     for epoch in range(start_epochs, epochs+1):
-        train_loss, r2_train = train(train_loader, model, device, loss_fn, optimizer, scheduler)
-        val_loss, r2_val, _ = evaluation(val_loader, model, device, loss_fn)
-        test_loss, r2_test, _ = evaluation(test_loader, model, device, loss_fn)
+        train_loss, r2_train = train(train_loader, model, device, loss, optimizer, scheduler)
+        val_loss, r2_val, _ = evaluation(val_loader, model, device, loss)
+        test_loss, r2_test, _ = evaluation(test_loader, model, device, loss)
         loss_values.append(train_loss)
         _r2_score_list.append(r2_train)
         r2_val_list.append(r2_val)
@@ -81,7 +86,7 @@ def run(dataloader, model_config, args, region):
             best_epoch = epoch
             save_model(model, region, type_model, output_model_dir, best=True)
 
-        if epoch % 300 == 0 and epoch > 0:
+        if epoch % 10 == 0 and epoch > 0:
             save_check_point(model, optimizer, epoch, region, type_model, check_point_dir)
 
         # Early stopping
@@ -91,7 +96,7 @@ def run(dataloader, model_config, args, region):
                 if optimizer.param_groups[0]['lr'] < 1e-6:
                     break
                 optimizer.param_groups[0]['lr'] *= 0.5
-                early_stopping = EarlyStopping(patience=50)
+                early_stopping = EarlyStopping(patience=30)
 
     print(f"Best model at epoch {best_epoch} with loss: {best_val_loss}")
     draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, region, type_model)
@@ -112,7 +117,7 @@ def main():
             model_config = json.load(json_config)
             model_config['region'] = region
         train_val_set = RegionDataset(root_dir, region, chromosome, dataset=args.dataset)
-        test_set = RegionDataset(test_dir, region, 'chr22')
+        test_set = RegionDataset(test_dir, region, chromosome, dataset=args.dataset)
         train_size = int(0.8 * len(train_val_set))
         val_size = len(train_val_set) - train_size
         train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])

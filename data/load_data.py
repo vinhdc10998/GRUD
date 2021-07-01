@@ -220,7 +220,6 @@ def load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir):
     true_haplotype_list = []
     a1_freq_list = []
     haplotype_list = []
-
     with reading(hap_dir) as fp:
         for i, line in enumerate(fp):
             items = line.rstrip().split()
@@ -242,9 +241,29 @@ def load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir):
             maf = convert_maf(float(items[af_col]))
             a1_freq_list.append(maf)
 
-
     haplotype_list = torch.tensor(haplotype_list, dtype=torch.float).swapaxes(0, 1)
     true_haplotype_list = torch.tensor(true_haplotype_list, dtype=torch.long).T
     a1_freq_list = torch.tensor(a1_freq_list, dtype=torch.float)
 
     return haplotype_list, true_haplotype_list, a1_freq_list
+
+
+def load_site_info_custom_data(legend_file):
+    site_info_list = []
+    with reading(legend_file) as fp:
+        items = fp.readline().rstrip().split()
+        id_col = get_item_col(items, 'id', legend_file)
+        a0_col = get_item_col(items, 'ref', legend_file)
+        a1_col = get_item_col(items, 'alt', legend_file)
+        position_col = get_item_col(items, 'position', legend_file)
+        marker_flag_col = get_item_col(
+            items, 'array_marker_flag', legend_file)
+        a1_freq_col = get_item_col(items, 'af', legend_file)
+        for line in fp:
+            items = line.rstrip().split()
+            site_info = SiteInfo(
+                items[id_col], items[position_col], items[a0_col],
+                items[a1_col], float(items[a1_freq_col]),
+                items[marker_flag_col] == '0')
+            site_info_list.append(site_info)
+    return site_info_list
