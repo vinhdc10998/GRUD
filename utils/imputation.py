@@ -18,8 +18,8 @@ def evaluation(dataloader, model, device, loss):
         
             # Compute prediction error
             logit_generator, prediction, logit_discriminator = model(X)
-            y_pred = torch.argmax(prediction, dim=-1)
-            test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y), torch.flatten(a1_freq)).item() 
+            y_pred = torch.argmax(prediction, dim=-1).T
+            test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
             
             label_discriminator = (y_pred != y).float()
             test_loss += loss['BCEWithLogitsLoss'](logit_discriminator, label_discriminator).item()
@@ -51,9 +51,10 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
         X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         # Compute prediction error
         logit_generator, prediction, logit_discriminator = model(X)
-        print(logit_generator.shape, prediction.shape, logit_discriminator.shape)
-        loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y), torch.flatten(a1_freq))
-        y_pred = torch.argmax(prediction, dim=-1)
+        # print("[IMPUTATION] Output shape:", logit_generator.shape, prediction.shape, logit_discriminator.shape)
+        
+        loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T))
+        y_pred = torch.argmax(prediction, dim=-1).T
         
         '''
         Loss discriminator
