@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+from torch import nn
 from model.single_model import SingleModel
 from model.multi_model import MultiModel
 from model.custom_cross_entropy import CustomCrossEntropyLoss
@@ -43,13 +44,18 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
 
     #Init Model
     loss_fn = CustomCrossEntropyLoss(gamma)
+    loss_fct = nn.BCEWithLogitsLoss()
+    loss = {
+        'CustomCrossEntropy': loss_fn, 
+        'BCEWithLogitsLoss': loss_fct
+    }
     if args.best_model:
         loaded_model = torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt'),map_location=torch.device(device))
     else:
         loaded_model = torch.load(os.path.join(model_dir, f'{type_model}_region_{region}.pt'),map_location=torch.device(device))
     model.load_state_dict(loaded_model)
     print(f"Loaded {type_model}_{region} model")
-    test_loss, _r2_score, (predictions, labels) = evaluation(dataloader, model, device, loss_fn)
+    test_loss, _r2_score, (predictions, labels) = evaluation(dataloader, model, device, loss)
     print(predictions.shape, labels.shape)
     print(f"[Evaluate] Loss: {test_loss} \t R2 Score: {_r2_score}")
     write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)

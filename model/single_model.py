@@ -7,8 +7,9 @@ from .activations import get_activation
 
 TYPE_MODEL = ['Higher', 'Lower']
 class Discriminator(nn.Module):
-    def __init__(self, hidden_size, activation='gelu'):
+    def __init__(self, model_config, activation='gelu'):
         super().__init__()
+        hidden_size = model_config['num_classes']
         self.dense = nn.Linear(hidden_size, hidden_size)
         self.dense_prediction = nn.Linear(hidden_size, 1)
         self.activation = get_activation(activation)
@@ -26,18 +27,21 @@ class SingleModel(nn.Module):
         assert type_model in TYPE_MODEL
         self.num_classes = model_config['num_classes']
         self.num_outputs = model_config['num_outputs']
-        model_config['num_encode'] = 20
+        model_config['num_encode'] = 40
         self.type_model = type_model
         self.generator = GRUModel(model_config, device, type_model=self.type_model)
-        self.discriminator = Discriminator(model_config['num_encode'], 'gelu')
+        self.discriminator = Discriminator(model_config, 'sigmoid')
 
 
     def forward(self, input_):
+        discriminator_logit = None
+        
         logit_prediction, logit_discriminator = self.generator(input_)
         fake_logit = torch.stack(logit_prediction)
         logit_generator = torch.cat(logit_prediction, dim=0)
         prediction = F.softmax(fake_logit, dim=-1)
-        discriminator_logit = self.discriminator(torch.stack(logit_discriminator).detach()).T
+        if self.train():
+            discriminator_logit = self.discriminator(fake_logit.detach()).T
         return logit_generator, prediction, discriminator_logit
     
 

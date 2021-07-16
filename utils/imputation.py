@@ -2,12 +2,13 @@ import os
 import torch
 from sklearn.metrics import r2_score
 from data.load_data import mkdir
+from torch.nn import functional as F
 
 def evaluation(dataloader, model, device, loss):
     '''
         Evaluate model with R square score
     '''
-    model.eval()
+    model.eval()  
     size = len(dataloader)
     test_loss = 0
     with torch.no_grad():
@@ -17,12 +18,13 @@ def evaluation(dataloader, model, device, loss):
             X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         
             # Compute prediction error
-            logit_generator, prediction, logit_discriminator = model(X)
+            logit_generator, prediction, _ = model(X)
             y_pred = torch.argmax(prediction, dim=-1).T
             test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
             
-            label_discriminator = (y_pred != y).float()
-            test_loss += loss['BCEWithLogitsLoss'](logit_discriminator, label_discriminator).item()
+            # if logit_discriminator != None:
+            #     label_discriminator = (y_pred != y).float()
+            #     test_loss += loss['BCEWithLogitsLoss'](logit_discriminator, label_discriminator).item()
 
             predictions.append(y_pred)
             labels.append(y)
@@ -51,7 +53,6 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
         X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         # Compute prediction error
         logit_generator, prediction, logit_discriminator = model(X)
-        # print("[IMPUTATION] Output shape:", logit_generator.shape, prediction.shape, logit_discriminator.shape)
         
         loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T))
         y_pred = torch.argmax(prediction, dim=-1).T
@@ -154,4 +155,114 @@ def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_p
 #             if len(gen_tmp) == 3 and gen_tmp[0] == type_model and region in regions:
 #                 with open(os.path.join(folder_dir, gen), 'r') as genfile:
 #                     mergered_gen.write(genfile.read())
+
+
+def train_ae(dataloader, encoder, decoder, discriminator, encoder_optimizer, decoder_optimizer, criterion, device):
+    encoder.train()
+    decoder.train()
+    
+    _r2_score = 0
+    train_loss = 0
+    predictions = []
+    labels = []
+    # for name, param in decoder.named_parameters():
+    #     print(name, param.grad)
+    #     break
+
+    for batch, (X, y, a1_freq) in enumerate(dataloader):
+        encoder_optimizer.zero_grad()
+        decoder_optimizer.zero_grad()
+        X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
+
+        batch_size = X.shape[0]
+        encoder_hidden = encoder.init_hidden(batch_size)
+
+        input_length = X.shape[1]
+        target_length = y.shape[1]
+
+        loss_crossentropy = 0
+        loss_BCE = 0
+        encoder_outputs = torch.zeros(batch_size, input_length, 40, device=device)
+        for ei in range(input_length):
+            encoder_output, encoder_hidden = encoder(X[:, ei, :], encoder_hidden)
+            encoder_outputs[:, ei] = encoder_output[:, 0]
+
+        decoder_input = torch.zeros((y.shape[0]), dtype=torch.int, device=device)
+        decoder_hidden = encoder_hidden
+
+        predict = []
+        label = []
+        for di in range(target_length):
+            decoder_logit, decoder_hidden, fake_decode  = decoder(decoder_input, decoder_hidden, encoder_outputs)
+            loss_crossentropy += criterion['CrossEntropy'](decoder_logit[0], y[:, di])
+            tmp = torch.squeeze(torch.argmax(F.softmax(decoder_logit, dim=-1), dim=-1))
+            decoder_input = tmp
+            discriminator_logit = discriminator(fake_decode.detach()).T
+            label_discriminator = (tmp != y[:, di]).float()
+            loss_BCE += criterion['BCEWithLogitsLoss'](torch.squeeze(discriminator_logit), label_discriminator)
+
+            predict.append(decoder_logit[0])
+            label.append(y[:, di])
+        y_pred = torch.argmax(torch.stack(predict), dim=-1).T
+        predictions.append(y_pred)
+
+        labels.append(torch.stack(label).T)
+        total_loss = loss_crossentropy + loss_BCE
+        total_loss.backward()
+        encoder_optimizer.step()
+        decoder_optimizer.step()
+        train_loss = total_loss.item()
+
+    predictions = torch.cat(predictions, dim=0)
+    labels = torch.cat(labels, dim=0)
+
+    n_samples = len(labels)
+    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
+
+    return train_loss/target_length, _r2_score
+
+def eval_ae(dataloader, encoder, decoder, criterion, device):
+    encoder.eval()
+    decoder.eval()
+    _r2_score = 0
+    test_loss = 0
+    predictions = []
+    labels = []
+    with torch.no_grad():
+        for batch, (X, y, a1_freq) in enumerate(dataloader):
+            X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
+
+            batch_size = X.shape[0]
+            encoder_hidden = encoder.init_hidden(batch_size)
+
+            input_length = X.shape[1]
+            target_length = y.shape[1]
+
+            loss = 0
+
+            encoder_outputs = torch.zeros(batch_size, input_length, 40, device=device)
+            for ei in range(input_length):
+                encoder_output, encoder_hidden = encoder(X[:, ei, :], encoder_hidden)
+                encoder_outputs[:, ei] += encoder_output[:, 0]
+
+            decoder_input = torch.zeros((y.shape[0]), dtype=torch.int, device=device)
+            decoder_hidden = encoder_hidden
+
+            predicts = []
+            label = []
+            for di in range(target_length):
+                decoder_logit, decoder_hidden, _ = decoder(decoder_input, decoder_hidden, encoder_outputs)
+                loss += criterion['CrossEntropy'](decoder_logit[0], y[:, di])
+                predict = torch.squeeze(torch.argmax(F.softmax(decoder_logit, dim=-1), dim=-1))
+                decoder_input = predict
+                predicts.append(predict)
             
+            test_loss = loss.item()
+            predictions.append(torch.stack(predicts).T)
+            labels.append(y)
+    predictions = torch.cat(predictions, dim=0)
+    labels = torch.cat(labels, dim=0)
+    n_samples = len(labels)
+    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
+
+    return test_loss/target_length , _r2_score
