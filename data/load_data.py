@@ -9,7 +9,7 @@ import numpy as np
 import sys
 import linecache
 import torch
-
+import gc
 def system(command):
     subprocess.call(command, shell=True)
 
@@ -189,20 +189,20 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
         site_info
         for site_info in site_info_list if not site_info.array_marker_flag
     ]
-    with reading(legend_true_file) as fp:
+    with reading(legend_true_file) as fp, reading(hap_true_file) as kp:
         header_line = fp.readline().rstrip().split()
         position_col = header_line.index("position")
-        for i, line in enumerate(fp):
+        for i, (line_fp, line_kp) in enumerate(zip(fp, kp)):
             k = i+1
             if k < start_index:
                 continue
-            items = line.rstrip().split()
+            items = line_fp.rstrip().split()
             position = items[position_col]
             if position in positions:
                 index_position_info_dict = [i for i,val in enumerate(positions) if val==position]
                 for t in index_position_info_dict:
                     if items[2] == imp_site_info_list[t].a0 and items[3] == imp_site_info_list[t].a1:
-                        hap = linecache.getline(hap_true_file, k).rstrip().split()
+                        hap = line_kp.rstrip().split()
                         true_haplotype_list.append(list(map(int, hap))) 
                         a1_freq_list.append(convert_maf(imp_site_info_list[t].a1_freq))
                         count += 1
@@ -210,7 +210,6 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
                 with open(index_start, "w+") as index_file:
                     start_index = index_file.write(str(k))
                 break
-        
     true_haplotype_list = torch.tensor(true_haplotype_list).T
     haplotype_list = torch.tensor(haplotype_list)
     a1_freq_list = torch.tensor(a1_freq_list)
