@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
-def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, test_loss_list, test_r2_list, region, type_model, output_prefix = 'images'):
+def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, test_loss_list, test_r2_list, region, output_prefix = 'images_gsav   '):
     if not os.path.exists(output_prefix):
         os.mkdir(output_prefix)
     fig, axs = plt.subplots(2, 3)
@@ -34,11 +34,11 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, test_loss_lis
     axs[1,1].set_ylim(0,1)
     # axs[1,2].set_yticks(np.arange(0, 1, 0.2))
     # axs[1,2].set_ylim(0,1)
-    plt.savefig(f"images/{type_model}_region_{region}.png")
+    plt.savefig(os.path.join(output_prefix,f"grud_region_{region}.png"))
     plt.close(fig)
 
 
-def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_prefix = 'images'):
+def draw_MAF_R2(pred, label, a1_freq_list, region, bins=30, output_prefix = 'images'):
     if not os.path.exists(output_prefix):
         os.mkdir(output_prefix)
     a1_freq_list = a1_freq_list.tolist()
@@ -62,4 +62,4 @@ def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_p
     plt.xlabel("Minor Allele Frequency")
     plt.ylabel("R2")
     # plt.ylim(0.65, 1)
-    plt.savefig(os.path.join(output_prefix, f'{type_model}_region_{region}_MAF_R2.png'))
+    plt.savefig(os.path.join(output_prefix, f'grud_region_{region}_MAF_R2.png'))

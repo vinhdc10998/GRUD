@@ -6,9 +6,15 @@ __pycache__/
 
 #Folder
 images/
+images_gsav/
 results/
+results_gsav3/
+results_apmra/
 git-actions-practice/
 
 #weights model
 model/weights/
 model/check_point/
+model/apmra94
+model/gsav3
+model/weight_return

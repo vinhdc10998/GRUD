@@ -1,8 +1,9 @@
 import os
 import torch
-from sklearn.metrics import r2_score
+from sklearn.metrics import matthews_corrcoef
 from data.load_data import mkdir
 from torch.nn import functional as F
+from scipy.stats import pearsonr
 
 def evaluation(dataloader, model, device, loss):
     '''
@@ -14,6 +15,7 @@ def evaluation(dataloader, model, device, loss):
     with torch.no_grad():
         predictions = []
         labels = []
+        dosage = []
         for (X, y, a1_freq) in dataloader:
             X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
         
@@ -22,19 +24,16 @@ def evaluation(dataloader, model, device, loss):
             y_pred = torch.argmax(prediction, dim=-1).T
             test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
             
-            # if logit_discriminator != None:
-            #     label_discriminator = (y_pred != y).float()
-            #     test_loss += loss['BCEWithLogitsLoss'](logit_discriminator, label_discriminator).item()
-
+            dosage.append(prediction)
             predictions.append(y_pred)
             labels.append(y)
-
+    
+    dosage = torch.cat(dosage, dim=0)
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     test_loss /= size
-    n_samples = len(labels)
-    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
-    return test_loss, _r2_score, (predictions, labels)
+    _r2_score = pearsonr(labels.cpu().detach().numpy().flatten(), predictions.cpu().detach().numpy().flatten())[0]**2
+    return test_loss, _r2_score, (predictions, labels, dosage)
 
 def train(dataloader, model, device, loss, optimizer, scheduler):
     '''
@@ -75,28 +74,26 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
         train_loss = total_loss.item()
 
     scheduler.step()
-    predictions = torch.cat(predictions, dim=0)
-    labels = torch.cat(labels, dim=0)
-
-    n_samples = len(labels)
-    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
+    predictions = torch.cat(predictions, dim=0).cpu().detach().numpy()
+    labels = torch.cat(labels, dim=0).cpu().detach().numpy()
+    _r2_score = pearsonr(labels.flatten(), predictions.flatten())[0]**2
 
     return train_loss, _r2_score
 
-def save_model(model, region, type_model, path, best=False):
+def save_model(model, region, path, best=False):
     if not os.path.exists(path):
         os.mkdir(path)
-    filename = os.path.join(path, f'{type_model}_region_{region}.pt')
+    filename = os.path.join(path, f'grud_region_{region}.pt')
     if best == True:
-        filename = os.path.join(path, f'Best_{type_model}_region_{region}.pt')
+        filename = os.path.join(path, f'Best_grud_region_{region}.pt')
     torch.save(model.state_dict(), filename)
 
-def save_check_point(model, optimizer, epochs, region, type_model, path):
+def save_check_point(model, optimizer, epochs, region, path):
     if not os.path.exists(path):
         os.mkdir(path)
     else:
         os.remove(os.path.join(path, os.listdir(path)[-1]))
-    filename = os.path.join(path, f'{type_model}_region_{region}_checkpoint_{epochs}.pt')
+    filename = os.path.join(path, f'grud_region_{region}_checkpoint_{epochs}.pt')
     torch.save({
             'epoch': epochs,
             'model_state_dict': model.state_dict(),
@@ -115,34 +112,99 @@ def get_device(gpu=False):
         print("You're using CPU to impute genotype")
     return device
 
-def write_gen(predictions, imp_site_info_list, chr, region, type_model, output_prefix, ground_truth=False):
+def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_truth=False):
     if ground_truth:
-        output_prefix = os.path.join(output_prefix, f"ground_truth_{chr}_{region}.gen")
+        output_prefix = os.path.join(output_prefix, "dosage", f"ground_truth_{chr}_{region}.dosage")
         # print(output_prefix)
     else:
-        output_prefix = os.path.join(output_prefix, f"{type_model}_{chr}_{region}.gen")
+        output_prefix = os.path.join(output_prefix, "dosage", f"grud_{chr}_{region}.dosage")
+    
+    mkdir(os.path.dirname(output_prefix))
+    with open(output_prefix, 'wt') as fp:
+        for allele_probs, site_info in zip(dosage, imp_site_info_list):
+            # print(allele_probs.shape)
+            a1_freq = site_info.a1_freq
+            if site_info.a1_freq > 0.5:
+                a1_freq = 1. - site_info.a1_freq
+                if a1_freq == 0:
+                    a1_freq = 0.00001
+
+            sample_size = len(allele_probs) // 2
+            values = [0.0] * sample_size
+            for i in range(sample_size):
+                h0 = allele_probs[2 * i]
+                h1 = allele_probs[2 * i + 1]
+                # print(h0.shape, h1.shape)
+                if ground_truth == False:
+                    a_a = h0[0] * h1[0]
+                    a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
+                    b_b = h0[1] * h1[1]
+                    # print(a_a, a_b_b_a, b_b)
+                    values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
+
+                else:
+                    values[i] = (h0 + h1).item()
+                # print(values[i])
+                # break
+            line = '--- %s %s %s %s %f ' \
+                   % (f'chr22_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
+                      site_info.a0, site_info.a1, a1_freq)
+            line += ' '.join(map(str, values))
+            fp.write(line)
+            fp.write('\n')
+
+def write_gen(predictions, dosage_all, imp_site_info_list, chr, region, output_prefix_t, ground_truth=False):
+    if ground_truth:
+        output_prefix = os.path.join(output_prefix_t, "gen", f"ground_truth_{chr}_{region}.gen")
+        output_prefix_dosage = os.path.join(output_prefix_t, "dosage", f"ground_truth_{chr}_{region}.dosage")
+        # print(output_prefix)
+    else:
+        output_prefix = os.path.join(output_prefix_t, "gen", f"grud_{chr}_{region}.gen")
+        output_prefix_dosage = os.path.join(output_prefix_t, "dosage", f"grud_{chr}_{region}.dosage")
 
 
     mkdir(os.path.dirname(output_prefix))
-    with open(output_prefix, 'wt') as fp:
+    mkdir(os.path.dirname(output_prefix_dosage))
+
+
+    with open(output_prefix, 'wt') as fp, open(output_prefix_dosage, 'wt') as dosage_file:
         # print(predictions.T.shape,  len(imp_site_info_list))
-        for allele_probs, site_info in zip(predictions.T, imp_site_info_list):
-            # print("222222222222")
+        for index, (allele_probs, dosage, site_info) in enumerate(zip(predictions.T, dosage_all, imp_site_info_list)):
+
             a1_freq = site_info.a1_freq
             if site_info.a1_freq > 0.5:
                 a1_freq = 1. - site_info.a1_freq
                 if a1_freq == 0:
                     a1_freq = 0.0001
+            sample_size = len(dosage) // 2
+            values = [0.0] * sample_size
+            for i in range(sample_size):
+                h0 = dosage[2 * i]
+                h1 = dosage[2 * i + 1]
+                # print(h0.shape, h1.shape)
+                if ground_truth == False:
+                    a_a = h0[0] * h1[0]
+                    a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
+                    b_b = h0[1] * h1[1]
+                    # print(a_a, a_b_b_a, b_b)
+                    values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
+
+                else:
+                    values[i] = (h0 + h1).item()
+            
+            
             line = '--- %s %s %s %s %f ' \
-                % (site_info.id, site_info.position,
+                % (f'{chr}_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
                     site_info.a0, site_info.a1, a1_freq)
-            # print(line)
-            # alleles = []
-            # for allele_index in range(0, len(allele_probs), 2):
-            #     alleles.append(allele_probs[allele_index].item() + allele_probs[allele_index+1].item())
+            line_dosage = '--- %s %s %s %s %f ' \
+                % (f'{chr}_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
+                    site_info.a0, site_info.a1, a1_freq)
+            line_dosage += ' '.join(map(str, values))
             line += ' '.join([str(allele) for allele in allele_probs.tolist()])
             fp.write(line)
             fp.write('\n')
+            dosage_file.write(line_dosage)
+            dosage_file.write('\n')
 
 # def merge_gen(folder_dir, type_model, chr, regions):
 #     print("DEBUG", folder_dir, os.path.join(folder_dir, f"{type_model}_{chr}.gen"))
@@ -217,7 +279,7 @@ def train_ae(dataloader, encoder, decoder, discriminator, encoder_optimizer, dec
     labels = torch.cat(labels, dim=0)
 
     n_samples = len(labels)
-    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
+    _r2_score = sum([matthews_corrcoef(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
 
     return train_loss/target_length, _r2_score
 
@@ -263,6 +325,6 @@ def eval_ae(dataloader, encoder, decoder, criterion, device):
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     n_samples = len(labels)
-    _r2_score = sum([r2_score(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
+    _r2_score = sum([matthews_corrcoef(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
 
     return test_loss/target_length , _r2_score

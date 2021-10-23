@@ -7,8 +7,6 @@ def get_argument():
                         dest='root_dir', help='Data folder')
     parser.add_argument('--model-config-dir', type=str, required=True,
                         dest='model_config_dir', help='Model config folder')
-    parser.add_argument('--model-type', type=str, required=True,
-                        dest='model_type', help='Model type')
     parser.add_argument('--gpu', action='store_true',
                         dest='gpu', help='Using GPU')
     parser.add_argument('--batch-size', type=int, default=2, required=False,

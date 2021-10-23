@@ -189,6 +189,7 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
         site_info
         for site_info in site_info_list if not site_info.array_marker_flag
     ]
+    flag = 0
     with reading(legend_true_file) as fp, reading(hap_true_file) as kp:
         header_line = fp.readline().rstrip().split()
         position_col = header_line.index("position")
@@ -197,12 +198,21 @@ def load_dataset(hap_file, legend_file, hap_true_file, legend_true_file, site_in
             if k < start_index:
                 continue
             items = line_fp.rstrip().split()
+            hap = line_kp.rstrip().split()
             position = items[position_col]
             if position in positions:
                 index_position_info_dict = [i for i,val in enumerate(positions) if val==position]
                 for t in index_position_info_dict:
-                    if items[2] == imp_site_info_list[t].a0 and items[3] == imp_site_info_list[t].a1:
-                        hap = line_kp.rstrip().split()
+                    if items[2] == imp_site_info_list[t].a0 and items[3] == imp_site_info_list[t].a1:   
+                        if flag == 1:
+                            flag = 0
+                            continue   
+                        if position == '17996285' and imp_site_info_list[t].a1 == 'ATCTC':
+                            # print(items)
+                            # print(position, imp_site_info_list[t].a0, imp_site_info_list[t].a1)
+                            # print(hap)
+                            flag = 1
+                            # pause = input("PAUSE...")
                         true_haplotype_list.append(list(map(int, hap))) 
                         a1_freq_list.append(convert_maf(imp_site_info_list[t].a1_freq))
                         count += 1
@@ -225,7 +235,7 @@ def load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir):
             tmp = []
             for allele in items:
                 tmp.append(one_hot(int(allele), None))
-            haplotype_list.append(list(map(list, tmp)))
+            haplotype_list.append((list(map(list, tmp))))
 
     with reading(label_hap_dir) as fp: 
         for i, line in enumerate(fp):
@@ -239,8 +249,7 @@ def load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir):
             items = line.rstrip().split()
             maf = convert_maf(float(items[af_col]))
             a1_freq_list.append(maf)
-
-    haplotype_list = torch.tensor(haplotype_list, dtype=torch.float).T
+    haplotype_list = torch.transpose(torch.tensor(haplotype_list, dtype=torch.float),0,1)
     true_haplotype_list = torch.tensor(true_haplotype_list, dtype=torch.long).T
     a1_freq_list = torch.tensor(a1_freq_list, dtype=torch.float)
 

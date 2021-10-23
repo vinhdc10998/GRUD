@@ -10,7 +10,7 @@ from data.dataset import RegionDataset
 from torch.utils.data import DataLoader
 from utils.argument_parser import get_argument
 from utils.plot_chart import draw_MAF_R2
-from utils.imputation import evaluation, get_device, write_gen
+from utils.imputation import evaluation, get_device, write_dosage, write_gen
 # torch.manual_seed(42)
 SINGLE_MODEL = ['Higher', 'Lower']
 MULTI_MODEL = ['Hybrid']
@@ -55,12 +55,14 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
         loaded_model = torch.load(os.path.join(model_dir, f'{type_model}_region_{region}.pt'),map_location=torch.device(device))
     model.load_state_dict(loaded_model)
     print(f"Loaded {type_model}_{region} model")
-    test_loss, _r2_score, (predictions, labels) = evaluation(dataloader, model, device, loss)
+    test_loss, _r2_score, (predictions, labels, dosage) = evaluation(dataloader, model, device, loss)
     print(predictions.shape, labels.shape)
     print(f"[Evaluate] Loss: {test_loss} \t R2 Score: {_r2_score}")
-    write_gen(predictions, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
-    write_gen(labels, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
-    
+    write_gen(predictions, dosage, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
+    # write_gen(labels, labels.T, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
+    # write_dosage(dosage, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
+    # write_dosage(labels.T, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
+
     # draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=30)
 
 def main():
@@ -80,14 +82,14 @@ def main():
             model_config['region'] = region
         dataset = RegionDataset(root_dir, region, chromosome, dataset=args.dataset)
         testloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-        # imp_site_info_list = [
-        #     site_info
-        #     for site_info in dataset.site_info_list if not site_info.array_marker_flag
-        # ]
+        imp_site_info_list = [
+            site_info
+            for site_info in dataset.site_info_list if site_info.array_marker_flag
+        ]
         run(
             testloader,
             dataset,
-            dataset.site_info_list,
+            imp_site_info_list,
             model_config,
             args, 
             region,

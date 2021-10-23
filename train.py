@@ -1,21 +1,18 @@
-from model.gru_model import DecoderGRU, EncoderGRU
 import os
 import json
 import torch
+import numpy as np
 from torch import nn
 from model.custom_cross_entropy import CustomCrossEntropyLoss
-from model.multi_model import MultiModel
-from model.single_model import Discriminator, SingleModel
+from model.grud_model import GRUD
 from model.early_stopping import EarlyStopping
 from data.dataset import RegionDataset
 from torch.utils.data import DataLoader
-from sklearn.model_selection import KFold
 
 from utils.argument_parser import get_argument
 from utils.plot_chart import draw_chart
-from utils.imputation import eval_ae, save_check_point, train, evaluation, get_device, save_model, train_ae
+from utils.imputation import save_check_point, train, evaluation, get_device, save_model
 torch.manual_seed(42)
-import time
 SINGLE_MODEL = ['Higher', 'Lower']
 MULTI_MODEL = ['Hybrid']
 
@@ -32,7 +29,6 @@ def reset_weights(m):
 
 def run(dataloader, model_config, args, region):
     device = get_device(args.gpu)
-    type_model = args.model_type
     lr = args.learning_rate
     epochs = args.epochs
 
@@ -42,24 +38,11 @@ def run(dataloader, model_config, args, region):
     test_loader = dataloader['test']
 
     #Init Model
-    if type_model in SINGLE_MODEL:
-        gamma = args.gamma if type_model == 'Higher' else -args.gamma
-        model = SingleModel(model_config, device, type_model=type_model).to(device) 
-
-    elif type_model in MULTI_MODEL:
-        gamma = 0
-        if args.best_model: 
-            model_config['lower_path'] = os.path.join(args.model_dir, f'Best_Lower_region_{region}.pt')
-            model_config['higher_path'] = os.path.join(args.model_dir, f'Best_Higher_region_{region}.pt')
-        else:
-            model_config['lower_path'] = os.path.join(args.model_dir, f'Lower_region_{region}.pt')
-            model_config['higher_path'] = os.path.join(args.model_dir, f'Higher_region_{region}.pt')
-        model = MultiModel(model_config, device, type_model=type_model).to(device)
-
+    model = GRUD(model_config, device).to(device) 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
-    loss_fn = CustomCrossEntropyLoss(gamma)
+    loss_fn = CustomCrossEntropyLoss()
     loss_fct = nn.BCEWithLogitsLoss()
     loss = {
         'CustomCrossEntropy': loss_fn, 
@@ -72,7 +55,7 @@ def run(dataloader, model_config, args, region):
     _r2_score_list, loss_values = [], [] #train
     r2_val_list, val_loss_list = [], [] #validation
     test_loss_list, test_r2_list = [], []
-    best_val_loss = 99999999
+    best_val_loss = np.inf
     start_epochs = 1
     if args.resume and os.path.exists(check_point_dir):
         filename = os.path.join(check_point_dir, os.listdir(check_point_dir)[-1])
@@ -100,21 +83,16 @@ def run(dataloader, model_config, args, region):
         val_loss, r2_val = round(val_loss, 5), round(r2_val, 5)
         train_loss, r2_train = round(train_loss, 5), round(r2_train, 5)
         print("{:<8}\t{:<15}\t{:>7f}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}".format(region, epoch, optimizer.param_groups[0]['lr'], train_loss, r2_train, val_loss, r2_val, test_loss, r2_test))
-        draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, test_loss_list, test_r2_list, region, type_model)
+        draw_chart(loss_values, _r2_score_list, val_loss_list, r2_val_list, test_loss_list, test_r2_list, region)
 
-        # print(f"[REGION {region} - EPOCHS {epoch}]\
-        #     lr: {optimizer.param_groups[0]['lr']}\
-        #         train_loss: {train_loss:>7f}, train_r2: {r2_train:>7f},\
-        #             val_loss: {val_loss:>7f}, val_r2: {r2_val:>7f},\
-        #                 test_loss: {test_loss:>7f}, test_r2: {r2_test:>7f}")   
         # Save best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_epoch = epoch
-            save_model(model, region, type_model, output_model_dir, best=True)
+            save_model(model, region, output_model_dir, best=True)
 
         if epoch % 10 == 0 and epoch > 0:
-            save_check_point(model, optimizer, epoch, region, type_model, check_point_dir)
+            save_check_point(model, optimizer, epoch, region, check_point_dir)
 
         # Early stopping
         if args.early_stopping:
@@ -126,41 +104,8 @@ def run(dataloader, model_config, args, region):
                 early_stopping = EarlyStopping(patience=30)
 
     print(f"Best model at epoch {best_epoch} with loss: {best_val_loss}")
-    save_model(model, region, type_model, output_model_dir)
+    save_model(model, region, output_model_dir)
 
-    # '''
-    # Encoder - Decoder + Discriminator
-    # '''
-    # start_epochs = 1
-    # encoder = EncoderGRU(model_config, device).to(device)
-    # decoder = DecoderGRU(model_config, device).to(device)
-    # discriminator = Discriminator(model_config, "sigmoid").to(device)
-    # encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
-    # decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
-    # criterion = {
-    #         'CrossEntropy': nn.CrossEntropyLoss(), 
-    #         'BCEWithLogitsLoss': nn.BCEWithLogitsLoss()
-    #     }
-
-    # def count_parameters(model):
-    #     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-    # number_encoder = count_parameters(encoder)
-    # number_decoder = count_parameters(decoder)
-    # print("Number of learnable Encoder:",number_encoder)
-    # print("Number of learnable Decoder:",number_decoder)
-    # print("Total of parameters:", number_encoder + number_decoder)
-
-    # print("{:<8}\t{:<15}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}".format("Region","Epoch","Train loss", "Train R2", "Val loss", "Val R2", "Test loss", "Test R2"))
-    # print("{:<8}\t{:<15}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}".format("------","-----","----------", "--------", "--------", "------", "---------", "-------"))
-
-    # for epoch in range(start_epochs, epochs+1):
-    #     train_loss, r2_train = train_ae(train_loader, encoder, decoder, discriminator, encoder_optimizer, decoder_optimizer, criterion, device)
-    #     val_loss, r2_val = eval_ae(val_loader, encoder, decoder, criterion, device)
-    #     test_loss, r2_test = eval_ae(test_loader, encoder, decoder, criterion, device)
-    #     test_loss, r2_test = round(test_loss, 5), round(r2_test, 5)
-    #     val_loss, r2_val = round(val_loss, 5), round(r2_val, 5)
-    #     train_loss, r2_train = round(train_loss, 5), round(r2_train, 5)
-    #     print("{:<8}\t{:<15}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}".format(region, epoch, train_loss, r2_train, val_loss, r2_val, test_loss, r2_test))
 def main():
     args = get_argument()
     root_dir = args.root_dir
@@ -182,7 +127,7 @@ def main():
         train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])
 
         print("[Train - Val- Test]:", len(train_set), len(val_set), len(test_set), 'samples')
-        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
         val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         dataloader = {
@@ -190,12 +135,7 @@ def main():
             'test': test_loader,
             'val': val_loader
         }
-        run(
-            dataloader,
-            model_config,
-            args, 
-            region
-        )
+        run(dataloader, model_config, args, region)
         torch.cuda.empty_cache()
 
 if __name__ == "__main__":
