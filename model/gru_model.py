@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torch.nn.modules.batchnorm import BatchNorm1d
 
 class GRUModel(nn.Module):
-    def __init__(self, model_config, device):
+    def __init__(self, model_config):
         super(GRUModel,self).__init__()
         # Debug
         model_config['feature_size'] = 10
@@ -25,7 +25,7 @@ class GRUModel(nn.Module):
         # self.num_layers = model_config['num_layers']
         self.num_layers = 8
 
-        self.device = device
+        self.device = model_config['device']
 
         self.linear_feature_list = nn.ModuleList([
             nn.Sequential(
@@ -72,11 +72,7 @@ class GRUModel(nn.Module):
             return logits_list(g)  in paper
         '''
         batch_size = x.shape[0]
-        gru_inputs = []
-        for index, linear in enumerate(self.linear_feature_list):
-            gru_input = linear(x[:, index].float())
-            gru_inputs.append(gru_input)
-        gru_inputs = torch.stack(gru_inputs)
+        gru_inputs = torch.stack([linear(x[:, index].float()) for index, linear in enumerate(self.linear_feature_list)])
         outputs, _ = self._compute_gru(self.gru, gru_inputs, batch_size)
         logit_list = []
         for index, (t_fw, t_bw) in enumerate(zip(self.output_points_fw, self.output_points_bw)):

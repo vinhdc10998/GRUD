@@ -20,10 +20,10 @@ class Discriminator(nn.Module):
 
 
 class GRUD(nn.Module):
-    def __init__(self,model_config, device):
+    def __init__(self,model_config):
         super(GRUD,self).__init__()
         self.num_classes = model_config['num_classes']
-        self.generator = GRUModel(model_config, device)
+        self.generator = GRUModel(model_config)
         self.discriminator = Discriminator(self.num_classes, 'sigmoid')
 
 
@@ -33,7 +33,7 @@ class GRUD(nn.Module):
         fake_logit = torch.stack(logit_prediction)
         logit_generator = torch.cat(logit_prediction, dim=0)
         prediction = F.softmax(fake_logit, dim=-1)
-        if self.train():
+        if self.training:
             discriminator_logit = self.discriminator(fake_logit.detach()).T
         return logit_generator, prediction, discriminator_logit
     

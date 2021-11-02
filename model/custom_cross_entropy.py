@@ -8,6 +8,8 @@ class CustomCrossEntropyLoss(nn.Module):
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, pred, target, a1_freq_list):
+
+        # print(pred.shape, target.shape, a1_freq_list.shape)
         assert pred.shape[0] == target.shape[0] and target.shape[0] == a1_freq_list.shape[0]
         return self.cross_entropy_loss(pred, target).mean()
             

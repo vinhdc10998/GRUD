@@ -36,20 +36,24 @@ def run(dataloader, model_config, args, region):
     train_loader = dataloader['train']
     val_loader = dataloader['val']
     test_loader = dataloader['test']
-
+    model_config['device'] = device
     #Init Model
-    model = GRUD(model_config, device).to(device) 
+
+    model = GRUD(model_config).to(device) 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of learnable parameters:",count_parameters(model))
-    loss_fn = CustomCrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss()
     loss_fct = nn.BCEWithLogitsLoss()
+    loss_l1 = nn.L1Loss()
     loss = {
         'CustomCrossEntropy': loss_fn, 
-        'BCEWithLogitsLoss': loss_fct
+        'BCEWithLogitsLoss': loss_fct,
+        'L1Loss': loss_l1
     }
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.995)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.97)
+
     early_stopping = EarlyStopping(patience=30)
     check_point_dir = args.check_point_dir
     _r2_score_list, loss_values = [], [] #train
@@ -127,9 +131,9 @@ def main():
         train_set, val_set = torch.utils.data.random_split(train_val_set, [train_size, val_size])
 
         print("[Train - Val- Test]:", len(train_set), len(val_set), len(test_set), 'samples')
-        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
-        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=1)
+        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=1)
         dataloader = {
             'train': train_loader, 
             'test': test_loader,

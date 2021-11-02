@@ -2,7 +2,7 @@ import os
 import json
 import torch
 from torch import nn
-from model.single_model import SingleModel
+from model.grud_model import GRUD
 from model.multi_model import MultiModel
 from model.custom_cross_entropy import CustomCrossEntropyLoss
 
@@ -18,50 +18,32 @@ MULTI_MODEL = ['Hybrid']
 
 def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     device = get_device(args.gpu)
-    type_model = args.model_type
     model_dir = args.model_dir
     result_gen_dir = args.result_gen_dir
     chromosome = args.chromosome
-    gamma = args.gamma if type_model == 'Higher' else -args.gamma
-
-
-    #Init Model
-    if type_model in SINGLE_MODEL:
-        gamma = args.gamma if type_model == 'Higher' else -args.gamma
-        model = SingleModel(model_config, device, type_model=type_model).to(device) 
-
-    elif type_model in MULTI_MODEL:
-        gamma = 0
-        if args.best_model: 
-            model_config['lower_path'] = os.path.join(args.model_dir, f'Best_Lower_region_{region}.pt')
-            model_config['higher_path'] = os.path.join(args.model_dir, f'Best_Higher_region_{region}.pt')
-        else:
-            model_config['lower_path'] = os.path.join(args.model_dir, f'Lower_region_{region}.pt')
-            model_config['higher_path'] = os.path.join(args.model_dir, f'Higher_region_{region}.pt')
-        
-        model = MultiModel(model_config, device, type_model=type_model).to(device)
-    # model = SingleModel(model_config, device, type_model=type_model).to(device)
+    model_config['device'] = device
 
     #Init Model
-    loss_fn = CustomCrossEntropyLoss(gamma)
+    model = GRUD(model_config).to(device) 
+    loss_fn = nn.CrossEntropyLoss()
     loss_fct = nn.BCEWithLogitsLoss()
     loss = {
         'CustomCrossEntropy': loss_fn, 
         'BCEWithLogitsLoss': loss_fct
     }
     if args.best_model:
-        loaded_model = torch.load(os.path.join(model_dir, f'Best_{type_model}_region_{region}.pt'),map_location=torch.device(device))
+        loaded_model = torch.load(os.path.join(model_dir, f'Best_grud_region_{region}.pt'),map_location=torch.device(device))
     else:
-        loaded_model = torch.load(os.path.join(model_dir, f'{type_model}_region_{region}.pt'),map_location=torch.device(device))
+        loaded_model = torch.load(os.path.join(model_dir, f'grud_region_{region}.pt'),map_location=torch.device(device))
     model.load_state_dict(loaded_model)
-    print(f"Loaded {type_model}_{region} model")
+    print(f"Loaded grud_{region} model")
     test_loss, _r2_score, (predictions, labels, dosage) = evaluation(dataloader, model, device, loss)
-    print(predictions.shape, labels.shape)
+    print(predictions.shape, labels.shape, dosage.shape)
     print(f"[Evaluate] Loss: {test_loss} \t R2 Score: {_r2_score}")
-    write_gen(predictions, dosage, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
-    # write_gen(labels, labels.T, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
-    # write_dosage(dosage, imp_site_info_list, chromosome, region, type_model, result_gen_dir)
-    # write_dosage(labels.T, imp_site_info_list, chromosome, region, type_model, result_gen_dir, ground_truth=True)
+    # write_gen(predictions, dosage, imp_site_info_list, chromosome, region, result_gen_dir)
+    # write_gen(labels, labels.T, imp_site_info_list, chromosome, region, result_gen_dir, ground_truth=True)
+    write_dosage(dosage, imp_site_info_list, chromosome, region, result_gen_dir)
+    # write_dosage(labels.T, imp_site_info_list, chromosome, region, result_gen_dir, ground_truth=True)
 
     # draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=30)
 
@@ -84,7 +66,7 @@ def main():
         testloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         imp_site_info_list = [
             site_info
-            for site_info in dataset.site_info_list if site_info.array_marker_flag
+            for site_info in dataset.site_info_list if not site_info.array_marker_flag
         ]
         run(
             testloader,

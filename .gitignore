@@ -8,8 +8,9 @@ __pycache__/
 images/
 images_gsav/
 results/
-results_gsav3/
-results_apmra/
+result/
+result_gsav3/
+result_apmra/
 git-actions-practice/
 
 #weights model

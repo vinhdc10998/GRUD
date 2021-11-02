@@ -16,13 +16,18 @@ def evaluation(dataloader, model, device, loss):
         predictions = []
         labels = []
         dosage = []
-        for (X, y, a1_freq) in dataloader:
-            X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
-        
+        for (X, y, y_dosage, a1_freq) in dataloader:
+            X, y, a1_freq = X.to(device, non_blocking=True), y.to(device, non_blocking=True), a1_freq.to(device, non_blocking=True)
+            X = torch.reshape(X, (X.shape[0]*X.shape[1],-1, 2))
+            y = torch.reshape(y, (y.shape[0]*y.shape[1],-1))
+            # y = torch.stack(y, dim=0)
+            a1_freq = torch.cat([a1_freq, a1_freq])
             # Compute prediction error
             logit_generator, prediction, _ = model(X)
+            print("dosage", y_dosage.shape)
             y_pred = torch.argmax(prediction, dim=-1).T
-            test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
+            # test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
+            test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T)).item() 
             
             dosage.append(prediction)
             predictions.append(y_pred)
@@ -48,12 +53,26 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
     #     if 'discriminator' in name or 'generator.linear' in name:
     #         print(name, param.grad)
 
-    for batch, (X, y, a1_freq) in enumerate(dataloader):
-        X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
+    for batch, (X, y, y_dosage, a1_freq) in enumerate(dataloader):
+        X, y, a1_freq, y_dosage = X.to(device, non_blocking=True), y.to(device, non_blocking=True), a1_freq.to(device, non_blocking=True), y_dosage.to(device, non_blocking=True)
         # Compute prediction error
+        X = torch.reshape(X, (X.shape[0]*X.shape[1],-1, 2))
+        y = torch.reshape(y, (y.shape[0]*y.shape[1],-1))
+        a1_freq = torch.cat([a1_freq, a1_freq])
         logit_generator, prediction, logit_discriminator = model(X)
         
-        loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T))
+        ###get dosage
+        tmp_evens = prediction[:,0::2]
+        tmp_odds = prediction[:,1::2]
+        a_b_b_a = tmp_evens[:, :, 0] * tmp_odds[:, :, 1] + tmp_evens[:, :, 1] * tmp_odds[:, :, 0]
+        b_b = tmp_evens[:, :, 1] * tmp_odds[:, :, 1]
+        kkk = (1*a_b_b_a + 2*b_b)
+        dosage = kkk.T.to(device)
+
+        loss_l1 = loss['L1Loss'](dosage, y_dosage)
+        # loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T))
+        loss_crossentropy = loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T))
+
         y_pred = torch.argmax(prediction, dim=-1).T
         
         '''
@@ -61,10 +80,12 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
             - 0 indicates the token is an original token,
             - 1 indicates the token was replaced.
         '''
+
+        # print(y_pred.shape, y.shape)
         label_discriminator = (y_pred != y).float()
         loss_BCE = loss['BCEWithLogitsLoss'](logit_discriminator, label_discriminator)
 
-        total_loss = loss_BCE + loss_crossentropy
+        total_loss = loss_BCE + loss_crossentropy + loss_l1
         predictions.append(y_pred)
         labels.append(y)
         #Backpropagation
@@ -121,35 +142,42 @@ def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_
     
     mkdir(os.path.dirname(output_prefix))
     with open(output_prefix, 'wt') as fp:
+        tmp_evens = dosage[:,0::2]
+        tmp_odds = dosage[:,1::2]
+        a_b_b_a = tmp_evens[:, :, 0] * tmp_odds[:, :, 1] + tmp_evens[:, :, 1] * tmp_odds[:, :, 0]
+        b_b = tmp_evens[:, :, 1] * tmp_odds[:, :, 1]
+        dosage = (1*a_b_b_a + 2*b_b).cpu().detach().numpy()
+        # print(kkk.shape)
+        # dosage = kkk.T.to(device)
         for allele_probs, site_info in zip(dosage, imp_site_info_list):
-            # print(allele_probs.shape)
+        #     # print(allele_probs.shape)
             a1_freq = site_info.a1_freq
             if site_info.a1_freq > 0.5:
                 a1_freq = 1. - site_info.a1_freq
                 if a1_freq == 0:
                     a1_freq = 0.00001
 
-            sample_size = len(allele_probs) // 2
-            values = [0.0] * sample_size
-            for i in range(sample_size):
-                h0 = allele_probs[2 * i]
-                h1 = allele_probs[2 * i + 1]
-                # print(h0.shape, h1.shape)
-                if ground_truth == False:
-                    a_a = h0[0] * h1[0]
-                    a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
-                    b_b = h0[1] * h1[1]
-                    # print(a_a, a_b_b_a, b_b)
-                    values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
+        #     sample_size = len(allele_probs) // 2
+        #     values = [0.0] * sample_size
+        #     for i in range(sample_size):
+        #         h0 = allele_probs[2 * i]
+        #         h1 = allele_probs[2 * i + 1]
+        #         # print(h0.shape, h1.shape)
+        #         if ground_truth == False:
+        #             a_a = h0[0] * h1[0]
+        #             a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
+        #             b_b = h0[1] * h1[1]
+        #             # print(a_a, a_b_b_a, b_b)
+        #             values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
 
-                else:
-                    values[i] = (h0 + h1).item()
-                # print(values[i])
-                # break
+        #         else:
+        #             values[i] = (h0 + h1).item()
+        #         # print(values[i])
+        #         # break
             line = '--- %s %s %s %s %f ' \
                    % (f'chr22_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
                       site_info.a0, site_info.a1, a1_freq)
-            line += ' '.join(map(str, values))
+            line += ' '.join(map(str, allele_probs))
             fp.write(line)
             fp.write('\n')
 

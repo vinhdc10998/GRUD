@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import os
+import torch
 from torch.utils.data import Dataset
 from .load_data import load_custom_dataset, load_site_info, load_dataset, load_site_info_custom_data
 
@@ -24,7 +25,6 @@ class RegionDataset(Dataset):
             self.haplotype_list, self.label_haplotype_list, self.a1_freq_list =\
                 load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir)
 
-            print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape, self.a1_freq_list.shape)
             
         else:
             with open(os.path.join(root_dir, 'index.txt'), 'w+') as index_file:
@@ -39,19 +39,30 @@ class RegionDataset(Dataset):
             self.site_info_list = load_site_info(panel_dir)
             self.haplotype_list, self.label_haplotype_list, self.a1_freq_list =\
                 load_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir, self.site_info_list, index_start)
-            print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape, self.a1_freq_list.shape)
-            
-        self.list_input = [Sample(self.haplotype_list[i], self.haplotype_list[i+1]) for i in range(0, len(self.haplotype_list)/2, 2)]
-        self.list_label = [Sample(self.haplotype_list[i], self.haplotype_list[i+1]) for i in range(0, len(self.label_haplotype_list)/2, 2)]
+        # self.list_input = torch.stack([torch.tensor([self.haplotype_list[i], self.haplotype_list[i+1]]) for i in range(0, len(self.haplotype_list), 2)])
+        self.list_input = []
+        for i in range(0, len(self.haplotype_list), 2):
+            tmp  = torch.stack([self.haplotype_list[i], self.haplotype_list[i+1]])
+            self.list_input.append(tmp)
+        
+        self.list_input = torch.stack(self.list_input)
+
+        self.list_label = torch.stack([torch.stack([self.label_haplotype_list[i], self.label_haplotype_list[i+1]]) for i in range(0, len(self.label_haplotype_list), 2)])
+        # print("[DATASET]:",self.list_input.shape, self.list_label.shape, self.a1_freq_list.shape)
+        print("[DATASET]:",self.list_input.shape, self.list_label.shape, self.a1_freq_list.shape)
 
     def __len__(self):
-        return len(self.haplotype_list)
+        return len(self.list_input)
     
     def __getitem__(self, index):
-        x = self.haplotype_list[index]
-        y = self.label_haplotype_list[index]
+        x = self.list_input[index]
+        y = self.list_label[index]
+        y_dosage = []
         a1_freq_list = self.a1_freq_list
-        return x, y, a1_freq_list
+        y_dosage= y[0] + y[1]
+
+        # y = torch.tensor(y)
+        return x, y, y_dosage, a1_freq_list
 
     
 
