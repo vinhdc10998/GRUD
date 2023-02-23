@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
-def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, test_loss_list, test_r2_list, region, output_prefix = 'images_gsav   '):
+def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, test_loss_list, test_r2_list, region, type_model="dis", output_prefix = 'images_lowpass'):
     if not os.path.exists(output_prefix):
         os.mkdir(output_prefix)
     fig, axs = plt.subplots(2, 3)
@@ -34,7 +34,7 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, test_loss_lis
     axs[1,1].set_ylim(0,1)
     # axs[1,2].set_yticks(np.arange(0, 1, 0.2))
     # axs[1,2].set_ylim(0,1)
-    plt.savefig(os.path.join(output_prefix,f"grud_region_{region}.png"))
+    plt.savefig(os.path.join(output_prefix,f"grud_{type_model}_region_{region}.png"))
     plt.close(fig)
 
 

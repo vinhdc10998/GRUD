@@ -21,14 +21,21 @@ def evaluation(dataloader, model, device, loss):
         
             # Compute prediction error
             logit_generator, prediction, _ = model(X)
+            # print(prediction.shape)
+            # print(prediction)
+
             y_pred = torch.argmax(prediction, dim=-1).T
+            # print(y_pred.shape)
+            # y_pred = prediction[:,:,1].T
+            # print(y_pred.shape)
             test_loss += loss['CustomCrossEntropy'](logit_generator, torch.flatten(y.T), torch.flatten(a1_freq.T)).item() 
-            
+            # print("DEBUG", prediction.T.shape)
+
             dosage.append(prediction)
             predictions.append(y_pred)
             labels.append(y)
     
-    dosage = torch.cat(dosage, dim=0)
+    dosage = torch.cat(dosage, dim=1)
     predictions = torch.cat(predictions, dim=0)
     labels = torch.cat(labels, dim=0)
     test_loss /= size
@@ -80,12 +87,12 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
 
     return train_loss, _r2_score
 
-def save_model(model, region, path, best=False):
+def save_model(model, region, path, type_model="dis", best=False):
     if not os.path.exists(path):
         os.mkdir(path)
-    filename = os.path.join(path, f'grud_region_{region}.pt')
+    filename = os.path.join(path, f'grud_{type_model}_region_{region}.pt')
     if best == True:
-        filename = os.path.join(path, f'Best_grud_region_{region}.pt')
+        filename = os.path.join(path, f'Best_grud_{type_model}_region_{region}.pt')
     torch.save(model.state_dict(), filename)
 
 def save_check_point(model, optimizer, epochs, region, path):
@@ -101,18 +108,16 @@ def save_check_point(model, optimizer, epochs, region, path):
             }, filename)
 
 def get_device(gpu=False):
-    if gpu == True:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        if device == 'cpu': 
-            print("You don't have GPU to impute genotype, so I will run by CPU")
-        else:
-            print(f"You're using GPU {torch.cuda.get_device_name(0)} to impute genotype")
+    if gpu:
+        device = f"cuda:{gpu}" 
+        print(f"You're using GPU {torch.cuda.get_device_name(int(gpu))} to impute genotype")
     else: 
         device = 'cpu'
         print("You're using CPU to impute genotype")
     return device
 
 def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_truth=False):
+    print(dosage.shape)
     if ground_truth:
         output_prefix = os.path.join(output_prefix, "dosage", f"ground_truth_{chr}_{region}.dosage")
         # print(output_prefix)
@@ -121,90 +126,70 @@ def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_
     
     mkdir(os.path.dirname(output_prefix))
     with open(output_prefix, 'wt') as fp:
+        tmp_evens = dosage[:,0::2]
+        tmp_odds = dosage[:,1::2]
+        a_b_b_a = tmp_evens[:, :, 0] * tmp_odds[:, :, 1] + tmp_evens[:, :, 1] * tmp_odds[:, :, 0]
+        b_b = tmp_evens[:, :, 1] * tmp_odds[:, :, 1]
+        dosage = (1*a_b_b_a + 2*b_b).cpu().detach().numpy()
+        # print(kkk.shape)
+        # dosage = kkk.T.to(device)
+        print(dosage.shape)
         for allele_probs, site_info in zip(dosage, imp_site_info_list):
-            # print(allele_probs.shape)
+        #     # print(allele_probs.shape)
             a1_freq = site_info.a1_freq
             if site_info.a1_freq > 0.5:
                 a1_freq = 1. - site_info.a1_freq
                 if a1_freq == 0:
                     a1_freq = 0.00001
 
-            sample_size = len(allele_probs) // 2
-            values = [0.0] * sample_size
-            for i in range(sample_size):
-                h0 = allele_probs[2 * i]
-                h1 = allele_probs[2 * i + 1]
-                # print(h0.shape, h1.shape)
-                if ground_truth == False:
-                    a_a = h0[0] * h1[0]
-                    a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
-                    b_b = h0[1] * h1[1]
-                    # print(a_a, a_b_b_a, b_b)
-                    values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
+        #     sample_size = len(allele_probs) // 2
+        #     values = [0.0] * sample_size
+        #     for i in range(sample_size):
+        #         h0 = allele_probs[2 * i]
+        #         h1 = allele_probs[2 * i + 1]
+        #         # print(h0.shape, h1.shape)
+        #         if ground_truth == False:
+        #             a_a = h0[0] * h1[0]
+        #             a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
+        #             b_b = h0[1] * h1[1]
+        #             # print(a_a, a_b_b_a, b_b)
+        #             values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
 
-                else:
-                    values[i] = (h0 + h1).item()
-                # print(values[i])
-                # break
+        #         else:
+        #             values[i] = (h0 + h1).item()
+        #         # print(values[i])
+        #         # break
             line = '--- %s %s %s %s %f ' \
                    % (f'chr22_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
                       site_info.a0, site_info.a1, a1_freq)
-            line += ' '.join(map(str, values))
+            line += ' '.join(map(str, allele_probs))
             fp.write(line)
             fp.write('\n')
-
-def write_gen(predictions, dosage_all, imp_site_info_list, chr, region, output_prefix_t, ground_truth=False):
+            
+def write_gen(predictions, imp_site_info_list, chr, region, output_prefix_t, ground_truth=False):
     if ground_truth:
         output_prefix = os.path.join(output_prefix_t, "gen", f"ground_truth_{chr}_{region}.gen")
-        output_prefix_dosage = os.path.join(output_prefix_t, "dosage", f"ground_truth_{chr}_{region}.dosage")
-        # print(output_prefix)
     else:
         output_prefix = os.path.join(output_prefix_t, "gen", f"grud_{chr}_{region}.gen")
-        output_prefix_dosage = os.path.join(output_prefix_t, "dosage", f"grud_{chr}_{region}.dosage")
-
 
     mkdir(os.path.dirname(output_prefix))
-    mkdir(os.path.dirname(output_prefix_dosage))
-
-
-    with open(output_prefix, 'wt') as fp, open(output_prefix_dosage, 'wt') as dosage_file:
-        # print(predictions.T.shape,  len(imp_site_info_list))
-        for index, (allele_probs, dosage, site_info) in enumerate(zip(predictions.T, dosage_all, imp_site_info_list)):
-
+    with open(output_prefix, 'wt') as fp:
+        for allele_probs, site_info in zip(predictions.T, imp_site_info_list):
             a1_freq = site_info.a1_freq
             if site_info.a1_freq > 0.5:
                 a1_freq = 1. - site_info.a1_freq
                 if a1_freq == 0:
                     a1_freq = 0.0001
-            sample_size = len(dosage) // 2
-            values = [0.0] * sample_size
-            for i in range(sample_size):
-                h0 = dosage[2 * i]
-                h1 = dosage[2 * i + 1]
-                # print(h0.shape, h1.shape)
-                if ground_truth == False:
-                    a_a = h0[0] * h1[0]
-                    a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
-                    b_b = h0[1] * h1[1]
-                    # print(a_a, a_b_b_a, b_b)
-                    values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
-
-                else:
-                    values[i] = (h0 + h1).item()
-            
-            
             line = '--- %s %s %s %s %f ' \
-                % (f'{chr}_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
+                % (f'chr22_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
                     site_info.a0, site_info.a1, a1_freq)
-            line_dosage = '--- %s %s %s %s %f ' \
-                % (f'{chr}_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
-                    site_info.a0, site_info.a1, a1_freq)
-            line_dosage += ' '.join(map(str, values))
+        
+            # alleles = []
+            # for allele_index in range(0, len(allele_probs), 2):
+            #     alleles.append(allele_probs[allele_index].item() + allele_probs[allele_index+1].item())
             line += ' '.join([str(allele) for allele in allele_probs.tolist()])
             fp.write(line)
             fp.write('\n')
-            dosage_file.write(line_dosage)
-            dosage_file.write('\n')
 
 # def merge_gen(folder_dir, type_model, chr, regions):
 #     print("DEBUG", folder_dir, os.path.join(folder_dir, f"{type_model}_{chr}.gen"))

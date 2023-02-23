@@ -33,7 +33,7 @@ class GRUD(nn.Module):
         fake_logit = torch.stack(logit_prediction)
         logit_generator = torch.cat(logit_prediction, dim=0)
         prediction = F.softmax(fake_logit, dim=-1)
-        if self.train():
+        if self.training:
             discriminator_logit = self.discriminator(fake_logit.detach()).T
         return logit_generator, prediction, discriminator_logit
     

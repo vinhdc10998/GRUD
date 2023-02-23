@@ -3,11 +3,13 @@ from argparse import ArgumentParser
 def get_argument():
     description = 'Genotype Imputation'
     parser = ArgumentParser(description=description, add_help=False)
+    parser.add_argument('--model-type', type=str, required=True,
+                        dest='type_model', help='Model type')
     parser.add_argument('--root-dir', type=str, required=True,
                         dest='root_dir', help='Data folder')
     parser.add_argument('--model-config-dir', type=str, required=True,
                         dest='model_config_dir', help='Model config folder')
-    parser.add_argument('--gpu', action='store_true',
+    parser.add_argument('--gpu', type=str, required=False,
                         dest='gpu', help='Using GPU')
     parser.add_argument('--batch-size', type=int, default=2, required=False,
                         dest='batch_size', help='Batch size')

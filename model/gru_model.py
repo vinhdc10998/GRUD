@@ -24,6 +24,12 @@ class GRUModel(nn.Module):
         self.region = model_config['region']
         # self.num_layers = model_config['num_layers']
         self.num_layers = 8
+        # print(len(self.output_points_fw), len(self.output_points_bw))
+
+        #Type Model
+        # self.type_model = model_config['type_model']
+
+        self.tmp = nn.Softmax()
 
         self.device = device
 
@@ -88,6 +94,9 @@ class GRUModel(nn.Module):
             gru_output = torch.cat(gru_output, dim=1).to(self.device)
             logit = self.list_linear[index](gru_output)
             logit_list.append(logit)
+        # logit_list = torch.stack(logit_list)
+        # print(logit_list.shape)
+        # gru = self.tmp(logit_list)
         return logit_list
 
     def init_hidden(self, batch):
