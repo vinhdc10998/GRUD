@@ -5,10 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
-def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type_model, output_prefix = 'images'):
+def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, test_loss_list, test_r2_list, region, type_model="dis", output_prefix = 'images_lowpass'):
     if not os.path.exists(output_prefix):
         os.mkdir(output_prefix)
-    fig, axs = plt.subplots(2, 2)
+    fig, axs = plt.subplots(2, 3)
     fig.suptitle(f'Region {region}')
     axs[0,0].set_title("Training Loss")
     axs[0,0].plot(train_loss)
@@ -18,10 +18,27 @@ def draw_chart(train_loss, train_r2_score, val_loss, val_r2_score, region, type_
     axs[0,1].plot(val_loss)
     axs[1,1].set_title("Validation R2 score")
     axs[1,1].plot(val_r2_score)
+    axs[0,2].set_title("Testing loss")
+    axs[0,2].plot(test_loss_list)
+    axs[1,2].set_title("Testing R2 score")
+    axs[1,2].plot(test_r2_list)
     fig.tight_layout()
-    plt.savefig(f"images/{type_model}_region_{region}.png")
 
-def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_prefix = 'images'):
+    axs[1,0].grid()
+    axs[1,1].grid()
+    axs[1,2].grid()
+
+    axs[1,0].set_yticks(np.arange(0, 1, 0.2))
+    axs[1,0].set_ylim(0,1)
+    axs[1,1].set_yticks(np.arange(0, 1, 0.2))
+    axs[1,1].set_ylim(0,1)
+    # axs[1,2].set_yticks(np.arange(0, 1, 0.2))
+    # axs[1,2].set_ylim(0,1)
+    plt.savefig(os.path.join(output_prefix,f"grud_{type_model}_region_{region}.png"))
+    plt.close(fig)
+
+
+def draw_MAF_R2(pred, label, a1_freq_list, region, bins=30, output_prefix = 'images'):
     if not os.path.exists(output_prefix):
         os.mkdir(output_prefix)
     a1_freq_list = a1_freq_list.tolist()
@@ -45,4 +62,4 @@ def draw_MAF_R2(pred, label, a1_freq_list, type_model, region, bins=30, output_p
     plt.xlabel("Minor Allele Frequency")
     plt.ylabel("R2")
     # plt.ylim(0.65, 1)
-    plt.savefig(os.path.join(output_prefix, f'{type_model}_region_{region}_MAF_R2.png'))
+    plt.savefig(os.path.join(output_prefix, f'grud_region_{region}_MAF_R2.png'))
