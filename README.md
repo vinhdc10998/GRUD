@@ -21,6 +21,8 @@ pip install -r requirements.txt
 
 ### Dataset
 In this repository, the example dataset which is used to train and evaluation is 1000 Genome Project (1KGP) phase3 integrated dataset for chromosome22.
+
+Download: https://drive.google.com/drive/folders/17RIdXWoIKJsxjzfYmSmvW19kaQHxoafC?usp=sharing
 - Type of input data:
   - Phased genotype with HAP/LEGEND format ( For details, please see https://github.com/kanamekojima/rnnimp)
   - Weighted of trained model
@@ -41,6 +43,24 @@ python eval.py  --root-dir <path of LENGEND/HAP files> \
                 --result-gen-dir <path of output files> \
                 --best-model
 ```
+
+### Training
+We provides small regions of chromosome 22 for training 1KGP data.
+
+```script
+python train.py --root-dir <path of LENGEND/HAP files> \
+                --model-type dis \
+                --model-config-dir <path of config model files> \
+                --batch-size 128 \
+                --epochs 100 \
+                --chr chr22 \
+                --lr 0.001 \
+                --output-model-dir <output path of weighted model files> \
+                --early-stopping \
+                --gpu 0 \
+                --region 1-10
+```
+
 ## Arguments
 | Args | Default | Description |
 | :--- | :--- | :--- |
@@ -54,6 +74,10 @@ python eval.py  --root-dir <path of LENGEND/HAP files> \
 | --model-dir STR | model/weights | weight model folder |
 | --result-gen-dir STR | results/ | result folder |
 | --dataset STR| None | Custom dataset |
+| --lr FLOAT| 1e-4 | learning rate |
+| --output-model-dir STR| None | Custom dataset |
+| --early-stopping BOOL | False | Early stopping |
+| --best-model BOOL| False | Get best model to test |
 
 ## CONTACT
 Developer: Duong Chi Vinh, GeneStory
