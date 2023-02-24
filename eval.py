@@ -10,7 +10,7 @@ from data.dataset import RegionDataset
 from torch.utils.data import DataLoader
 from utils.argument_parser import get_argument
 from utils.plot_chart import draw_MAF_R2
-from utils.imputation import evaluation, get_device, write_dosage, write_gen
+from utils.imputation import evaluation, get_device, write_dosage, write_gen, write_output_Oxford_format
 # torch.manual_seed(42)
 SINGLE_MODEL = ['Higher', 'Lower']
 MULTI_MODEL = ['Hybrid']
@@ -42,19 +42,8 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     model.load_state_dict(loaded_model)
     print(f"Loaded grud_{region} model")
     test_loss, _r2_score, (predictions, labels, dosage) = evaluation(dataloader, model, device, loss)
-    print(predictions.shape, labels.shape, dosage.shape)
     print(f"[Evaluate] Loss: {test_loss} \t R2 Score: {_r2_score}")
-    # write_gen(dosage_label, imp_site_info_list, chromosome, region, "GT", result_gen_dir)
-
-    write_gen(predictions, imp_site_info_list, chromosome, region, result_gen_dir)
-    # write_gen(labels, imp_site_info_list, chromosome, region, result_gen_dir, ground_truth=True)
-    # print(len(imp_site_info_list))
-    write_dosage(dosage, imp_site_info_list, chromosome, region, result_gen_dir)
-    # print(labels.shape)
-    # write_dosage(labels, imp_site_info_list, chromosome, region, result_gen_dir, ground_truth=True)
-
-    # draw_MAF_R2(predictions, labels, a1_freq_list, type_model, region, bins=30)
-
+    write_output_Oxford_format(dosage, imp_site_info_list, chromosome, region, result_gen_dir)
 def main():
     args = get_argument()
     root_dir = args.root_dir

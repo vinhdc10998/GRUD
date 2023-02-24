@@ -128,6 +128,7 @@ def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_
     with open(output_prefix, 'wt') as fp:
         tmp_evens = dosage[:,0::2]
         tmp_odds = dosage[:,1::2]
+        a_a = tmp_evens[:, :, 0] * tmp_odds[:, :, 0]
         a_b_b_a = tmp_evens[:, :, 0] * tmp_odds[:, :, 1] + tmp_evens[:, :, 1] * tmp_odds[:, :, 0]
         b_b = tmp_evens[:, :, 1] * tmp_odds[:, :, 1]
         dosage = (1*a_b_b_a + 2*b_b).cpu().detach().numpy()
@@ -191,125 +192,31 @@ def write_gen(predictions, imp_site_info_list, chr, region, output_prefix_t, gro
             fp.write(line)
             fp.write('\n')
 
-# def merge_gen(folder_dir, type_model, chr, regions):
-#     print("DEBUG", folder_dir, os.path.join(folder_dir, f"{type_model}_{chr}.gen"))
-#     gen = os.path.join(folder_dir, f"{type_model}_{chr}.gen")
-#     mkdir(os.path.dirname(gen))
-#     with open(gen, 'w+') as mergered_gen:
-#         for gen in os.listdir(folder_dir):
-#             gen_tmp = gen.split("_")
-#             region = gen_tmp[-1].split(".")[0]
-#             if len(gen_tmp) == 3 and gen_tmp[0] == type_model and region in regions:
-#                 with open(os.path.join(folder_dir, gen), 'r') as genfile:
-#                     mergered_gen.write(genfile.read())
-
-
-def train_ae(dataloader, encoder, decoder, discriminator, encoder_optimizer, decoder_optimizer, criterion, device):
-    encoder.train()
-    decoder.train()
-    
-    _r2_score = 0
-    train_loss = 0
-    predictions = []
-    labels = []
-    # for name, param in decoder.named_parameters():
-    #     print(name, param.grad)
-    #     break
-
-    for batch, (X, y, a1_freq) in enumerate(dataloader):
-        encoder_optimizer.zero_grad()
-        decoder_optimizer.zero_grad()
-        X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
-
-        batch_size = X.shape[0]
-        encoder_hidden = encoder.init_hidden(batch_size)
-
-        input_length = X.shape[1]
-        target_length = y.shape[1]
-
-        loss_crossentropy = 0
-        loss_BCE = 0
-        encoder_outputs = torch.zeros(batch_size, input_length, 40, device=device)
-        for ei in range(input_length):
-            encoder_output, encoder_hidden = encoder(X[:, ei, :], encoder_hidden)
-            encoder_outputs[:, ei] = encoder_output[:, 0]
-
-        decoder_input = torch.zeros((y.shape[0]), dtype=torch.int, device=device)
-        decoder_hidden = encoder_hidden
-
-        predict = []
-        label = []
-        for di in range(target_length):
-            decoder_logit, decoder_hidden, fake_decode  = decoder(decoder_input, decoder_hidden, encoder_outputs)
-            loss_crossentropy += criterion['CrossEntropy'](decoder_logit[0], y[:, di])
-            tmp = torch.squeeze(torch.argmax(F.softmax(decoder_logit, dim=-1), dim=-1))
-            decoder_input = tmp
-            discriminator_logit = discriminator(fake_decode.detach()).T
-            label_discriminator = (tmp != y[:, di]).float()
-            loss_BCE += criterion['BCEWithLogitsLoss'](torch.squeeze(discriminator_logit), label_discriminator)
-
-            predict.append(decoder_logit[0])
-            label.append(y[:, di])
-        y_pred = torch.argmax(torch.stack(predict), dim=-1).T
-        predictions.append(y_pred)
-
-        labels.append(torch.stack(label).T)
-        total_loss = loss_crossentropy + loss_BCE
-        total_loss.backward()
-        encoder_optimizer.step()
-        decoder_optimizer.step()
-        train_loss = total_loss.item()
-
-    predictions = torch.cat(predictions, dim=0)
-    labels = torch.cat(labels, dim=0)
-
-    n_samples = len(labels)
-    _r2_score = sum([matthews_corrcoef(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
-
-    return train_loss/target_length, _r2_score
-
-def eval_ae(dataloader, encoder, decoder, criterion, device):
-    encoder.eval()
-    decoder.eval()
-    _r2_score = 0
-    test_loss = 0
-    predictions = []
-    labels = []
-    with torch.no_grad():
-        for batch, (X, y, a1_freq) in enumerate(dataloader):
-            X, y, a1_freq = X.to(device), y.to(device), a1_freq.to(device)
-
-            batch_size = X.shape[0]
-            encoder_hidden = encoder.init_hidden(batch_size)
-
-            input_length = X.shape[1]
-            target_length = y.shape[1]
-
-            loss = 0
-
-            encoder_outputs = torch.zeros(batch_size, input_length, 40, device=device)
-            for ei in range(input_length):
-                encoder_output, encoder_hidden = encoder(X[:, ei, :], encoder_hidden)
-                encoder_outputs[:, ei] += encoder_output[:, 0]
-
-            decoder_input = torch.zeros((y.shape[0]), dtype=torch.int, device=device)
-            decoder_hidden = encoder_hidden
-
-            predicts = []
-            label = []
-            for di in range(target_length):
-                decoder_logit, decoder_hidden, _ = decoder(decoder_input, decoder_hidden, encoder_outputs)
-                loss += criterion['CrossEntropy'](decoder_logit[0], y[:, di])
-                predict = torch.squeeze(torch.argmax(F.softmax(decoder_logit, dim=-1), dim=-1))
-                decoder_input = predict
-                predicts.append(predict)
-            
-            test_loss = loss.item()
-            predictions.append(torch.stack(predicts).T)
-            labels.append(y)
-    predictions = torch.cat(predictions, dim=0)
-    labels = torch.cat(labels, dim=0)
-    n_samples = len(labels)
-    _r2_score = sum([matthews_corrcoef(labels[i].cpu().detach().numpy(), predictions[i].cpu().detach().numpy()) for i in range(n_samples)])/n_samples
-
-    return test_loss/target_length , _r2_score
+def write_output_Oxford_format(dosage, imp_site_info_list, chr, region, output_prefix, ground_truth=False):
+    if ground_truth:
+        output_prefix = os.path.join(output_prefix, "dosage", f"ground_truth_{chr}_{region}.dosage")
+    else:
+        output_prefix = os.path.join(output_prefix, "dosage", f"grud_{chr}_{region}.dosage")
+    mkdir(os.path.dirname(output_prefix))
+    with open(output_prefix, 'wt') as fp:
+        tmp_evens = dosage[:,0::2]
+        tmp_odds = dosage[:,1::2]
+        a_a = (tmp_evens[:, :, 0] * tmp_odds[:, :, 0]).cpu().detach().numpy()
+        a_b_b_a = (tmp_evens[:, :, 0] * tmp_odds[:, :, 1] + tmp_evens[:, :, 1] * tmp_odds[:, :, 0]).cpu().detach().numpy()
+        b_b = (tmp_evens[:, :, 1] * tmp_odds[:, :, 1]).cpu().detach().numpy()
+        sample_size = a_a.shape[1]
+        values = [0.0] * 3 * sample_size
+        for value1, value2, value3, site_info in zip(a_a, a_b_b_a, b_b, imp_site_info_list):
+            a1_freq = site_info.a1_freq
+            if site_info.a1_freq > 0.5:
+                a1_freq = 1. - site_info.a1_freq
+            line = '--- %s %s %s %s ' \
+                   % (f'chr22_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
+                      site_info.a0, site_info.a1)
+            for i in range(sample_size):
+                values[3*i] = value1[i]
+                values[3*i + 1] = value2[i]
+                values[3*i + 2] = value3[i]
+            line += ' '.join(map(str, values))
+            fp.write(line)
+            fp.write('\n')
