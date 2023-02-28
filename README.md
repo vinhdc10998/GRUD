@@ -4,6 +4,9 @@
 
 This repository contains a Python implementation of GRUD model, which is a genotype imputation based on deep learning algorithms. In specific, GRUD is composed of two components: *Generator* and *Discriminator*. In addition to, our approach resolves the reference panel privacy problem while improving both the accuracy and running time.
 
+![Screenshot](image/GRUD.svg)
+
+
 If you have any feature requests or questions, feel free to leave them as GitHub issues!
 ## REQUIREMENT
 
