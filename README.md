@@ -1,4 +1,4 @@
-# GenotypeImputationGRU
+# A rapid and reference-free imputation method for low-cost genomic applications
 
 ## Overview
 ![Screenshot](image/GRUD.svg)
