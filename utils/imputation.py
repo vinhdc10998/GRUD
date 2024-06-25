@@ -223,9 +223,9 @@ def oxford_2_vcf(path_gen, vcf_path, sample_name_path, chr):
 
     df = pd.read_csv(output_path, sep=' ', header=None)
     chrom=chr
-    filterValue='.'
-    qual='PASS'
-    info='.'
+    filterValue='PASS'
+    qual='.'
+    info='IMPUTED'
     formatValue='GT'
     VCF = header
     sample_header = '\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT'
@@ -242,7 +242,6 @@ def oxford_2_vcf(path_gen, vcf_path, sample_name_path, chr):
         ref=row[3]
         alt=row[4]
         gt=row[6:].tolist()
-        info = '.'
         tmp = []
         for indkex in range(0, len(gt)-1, 2):
             tmp.append(str(gt[indkex]) + "|" + str(gt[indkex+1]))
