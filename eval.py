@@ -74,8 +74,11 @@ def main():
             args, 
             region,
         )
-    
+
+    print("----------Imputation Done----------")
+    print(f"Writing to gen_{chromosome}.vcf.gz file----------")
     oxford_2_vcf(os.path.join(args.result_gen_dir, 'gen'), args.result_gen_dir, args.sample, chromosome)
+    print("----------Writing to VCF Done----------")
 
 if __name__ == "__main__":
     main()

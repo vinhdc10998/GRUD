@@ -3,6 +3,8 @@ import torch
 import pandas as pd
 import gzip
 import subprocess
+import shutil
+
 from sklearn.metrics import matthews_corrcoef
 from data.load_data import mkdir
 from torch.nn import functional as F
@@ -181,9 +183,9 @@ def write_gen(predictions, imp_site_info_list, chr, region, output_prefix_t, gro
 
 def write_output_Oxford_format(dosage, imp_site_info_list, chr, region, output_prefix, ground_truth=False):
     if ground_truth:
-        output_prefix = os.path.join(output_prefix, "dosage", f"ground_truth_{chr}_{region}.dosage")
+        output_prefix = os.path.join(output_prefix, "oxford", f"ground_truth_{chr}_{region}.dosage")
     else:
-        output_prefix = os.path.join(output_prefix, "dosage", f"grud_{chr}_{region}.dosage")
+        output_prefix = os.path.join(output_prefix, "oxford", f"grud_{chr}_{region}.dosage")
     mkdir(os.path.dirname(output_prefix))
     with open(output_prefix, 'wt') as fp:
         tmp_evens = dosage[:,0::2]
@@ -209,14 +211,17 @@ def write_output_Oxford_format(dosage, imp_site_info_list, chr, region, output_p
             fp.write('\n')
 
 def oxford_2_vcf(path_gen, vcf_path, sample_name_path, chr):
-    command_line = f'cat $(ls -v {os.path.join(path_gen,"*")}) >> {os.path.join(path_gen, "gen.txt")}'
+    output_path = os.path.join(path_gen, "gen.txt")
+    if os.path.exists(output_path):
+        os.remove(output_path)
+    command_line = f'cat $(ls -v {os.path.join(path_gen,"*")}) >> {output_path}'
     os.system(command_line)
+    
     header_path = './header.txt'
     with open(header_path, 'r') as fp:
         header = fp.read()
 
-    
-    df = pd.read_csv(os.path.join(path_gen, "gen.txt"), sep=' ', header=None)
+    df = pd.read_csv(output_path, sep=' ', header=None)
     chrom=chr
     filterValue='.'
     qual='PASS'
@@ -247,3 +252,5 @@ def oxford_2_vcf(path_gen, vcf_path, sample_name_path, chr):
 
     with gzip.open(os.path.join(vcf_path, f'gen_{chrom}.vcf.gz'), "wb") as fp:
         fp.write(VCF.encode())
+    shutil.rmtree(path_gen, ignore_errors=True)
+

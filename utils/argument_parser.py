@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 def get_argument():
     description = 'Genotype Imputation'
     parser = ArgumentParser(description=description, add_help=False)
-    parser.add_argument('--model-type', type=str, required=True,
+    parser.add_argument('--model-type', type=str, default='dis', required=False,
                         dest='type_model', help='Model type')
     parser.add_argument('--root-dir', type=str, required=True,
                         dest='root_dir', help='Data folder')
@@ -11,11 +11,11 @@ def get_argument():
                         dest='model_config_dir', help='Model config folder')
     parser.add_argument('--gpu', type=str, required=False,
                         dest='gpu', help='Using GPU')
-    parser.add_argument('--batch-size', type=int, default=2, required=False,
+    parser.add_argument('--batch-size', type=int, default=128, required=False,
                         dest='batch_size', help='Batch size')
     parser.add_argument('--epochs', type=int, default=200, required=False,
                         dest='epochs', help='Epochs')
-    parser.add_argument('--regions', type=str, default=1, required=False,
+    parser.add_argument('--regions', type=str, default=1, required=True,
                         dest='regions', help='Region range')
     parser.add_argument('--chr', type=str, default='chr22', required=False,
                         dest='chromosome', help='Chromosome')
@@ -31,7 +31,7 @@ def get_argument():
                         dest='model_dir', help='Weights model dir')
     parser.add_argument('--result-gen-dir', type=str, default='results/', required=False,
                         dest='result_gen_dir', help='result gen dir')
-    parser.add_argument('--best-model', action='store_true',
+    parser.add_argument('--best-model', action='store_true', default=True,
                         dest='best_model', help='Get best model to eval')
     parser.add_argument('--test-dir', type=str, default='../Dataset/test_100_samples_GT', required=False,
                         dest='test_dir', help='test data folder')
