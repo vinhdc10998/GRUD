@@ -29,6 +29,7 @@ Download: https://drive.google.com/drive/folders/17RIdXWoIKJsxjzfYmSmvW19kaQHxoa
   - Weighted of trained model
 - Type of output data:
   - Genotype imputation results in Oxford GEN format
+  - VCF format
 
 ### Imputation
 For example, GRUD model imputes genotypes for small regions (1-10) separately
