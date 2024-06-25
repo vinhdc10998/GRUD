@@ -42,6 +42,7 @@ python eval.py  --root-dir <path of LENGEND/HAP files> \
                 --model-dir <path of weighted model files> \
                 --gpu 2 \ 
                 --result-gen-dir <path of output files> \
+                --sample <path of sample name file> \
                 --best-model
 ```
 
