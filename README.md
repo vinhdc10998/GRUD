@@ -36,13 +36,10 @@ For example, GRUD model imputes genotypes for small regions (1-10) separately
 ```script
 python eval.py  --root-dir <path of LENGEND/HAP files> \
                 --model-config-dir <path of config model files> \
-                --model-type dis \
-                --batch-size 128 \
-                --regions 1-10 \
                 --model-dir <path of weighted model files> \
-                --gpu 2 \ 
                 --result-gen-dir <path of output files> \
                 --sample <path of sample name file> \
+                --regions 1-10 \
                 --best-model
 ```
 
