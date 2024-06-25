@@ -21,7 +21,7 @@ pip install -r requirements.txt
 ## EXAMPLE USAGE
 
 ### Dataset
-In this repository, the example dataset which is used to train and evaluation is 1000 Genome Project (1KGP) phase3 integrated dataset for chromosome22.
+In this repository, the example dataset that is used to train and evaluate is the 1000 Genome Project (1KGP) phase 3 integrated dataset for chromosome22.
 
 Download: https://drive.google.com/drive/folders/17RIdXWoIKJsxjzfYmSmvW19kaQHxoafC?usp=sharing
 - Type of input data:
@@ -87,7 +87,7 @@ If you find GRUD or any of the scripts in this repository useful for your resear
 > Chi Duong, V., Minh Vu, G., Khac Nguyen, T., Tran The Nguyen, H., Luong Pham, T., S. Vo, N., & Hong Hoang, T. (2023). A rapid and reference-free imputation method for low-cost genotyping platforms. Scientific Reports, 13(1), 23083. https://doi.org/10.1038/s41598-023-50086-4
 
 ## LICENSE
-The scripts in this repository are available under the MIT License. For more details, see the LICENSE.md file.
+The scripts in this repository are available under the MIT License. For more details, see the LICENSE file.
 
 ## CONTACT
 Developer: Duong Chi Vinh, GeneStory
