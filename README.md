@@ -81,6 +81,14 @@ python train.py --root-dir <path of LENGEND/HAP files> \
 | --early-stopping BOOL | False | Early stopping |
 | --best-model BOOL| False | Get best model to test |
 
+## CITATION
+If you find GRUD or any of the scripts in this repository useful for your research, please cite:
+
+> Chi Duong, V., Minh Vu, G., Khac Nguyen, T., Tran The Nguyen, H., Luong Pham, T., S. Vo, N., & Hong Hoang, T. (2023). A rapid and reference-free imputation method for low-cost genotyping platforms. Scientific Reports, 13(1), 23083. https://doi.org/10.1038/s41598-023-50086-4
+
+## LICENSE
+The scripts in this repository are available under the MIT License. For more details, see the LICENSE.md file.
+
 ## CONTACT
 Developer: Duong Chi Vinh, GeneStory
 
