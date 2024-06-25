@@ -81,6 +81,11 @@ python train.py --root-dir <path of LENGEND/HAP files> \
 | --early-stopping BOOL | False | Early stopping |
 | --best-model BOOL| False | Get best model to test |
 
+## TODO
+- [x] Training model source code
+- [x] Evaluation model source code
+- [ ] Inference model source code
+
 ## CITATION
 If you find GRUD or any of the scripts in this repository useful for your research, please cite:
 
