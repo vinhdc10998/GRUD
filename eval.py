@@ -3,18 +3,13 @@ import json
 import torch
 from torch import nn
 from model.grud_model import GRUD
-from model.multi_model import MultiModel
 from model.custom_cross_entropy import CustomCrossEntropyLoss
 
 from data.dataset import RegionDataset
 from torch.utils.data import DataLoader
 from utils.argument_parser import get_argument
-from utils.plot_chart import draw_MAF_R2
-from utils.imputation import evaluation, get_device, write_dosage, write_gen, write_output_Oxford_format
+from utils.imputation import evaluation, get_device, write_gen, write_output_Oxford_format, oxford_2_vcf
 # torch.manual_seed(42)
-SINGLE_MODEL = ['Higher', 'Lower']
-MULTI_MODEL = ['Hybrid']
-
 
 def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     device = get_device(args.gpu)
@@ -44,6 +39,8 @@ def run(dataloader, dataset, imp_site_info_list, model_config, args, region):
     test_loss, _r2_score, (predictions, labels, dosage) = evaluation(dataloader, model, device, loss)
     print(f"[Evaluate] Loss: {test_loss} \t R2 Score: {_r2_score}")
     write_output_Oxford_format(dosage, imp_site_info_list, chromosome, region, result_gen_dir)
+    write_gen(predictions, imp_site_info_list, chromosome, region, result_gen_dir)
+
 def main():
     args = get_argument()
     root_dir = args.root_dir
@@ -51,8 +48,6 @@ def main():
     batch_size = args.batch_size
     chromosome = args.chromosome
     regions = args.regions.split("-")
-    # with open(os.path.join(root_dir, 'index.txt'),'w+') as index_file:
-    #     index_file.write("0")
     index_region = args.regions + "_GRUD"
 
     with open(os.path.join(root_dir, f'{index_region}.txt'), 'w+') as index_file:
@@ -67,7 +62,6 @@ def main():
 
         dataset = RegionDataset(root_dir, index_region, region, chromosome, dataset=args.dataset)
         testloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-        # print(dataset.site_info_list)
         imp_site_info_list = [
             site_info
             for site_info in dataset.site_info_list if not site_info.array_marker_flag
@@ -80,6 +74,8 @@ def main():
             args, 
             region,
         )
+    
+    oxford_2_vcf(os.path.join(args.result_gen_dir, 'gen'), args.result_gen_dir, args.sample, chromosome)
 
 if __name__ == "__main__":
     main()

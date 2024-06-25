@@ -1,5 +1,8 @@
 import os
 import torch
+import pandas as pd
+import gzip
+import subprocess
 from sklearn.metrics import matthews_corrcoef
 from data.load_data import mkdir
 from torch.nn import functional as F
@@ -120,7 +123,6 @@ def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_
     print(dosage.shape)
     if ground_truth:
         output_prefix = os.path.join(output_prefix, "dosage", f"ground_truth_{chr}_{region}.dosage")
-        # print(output_prefix)
     else:
         output_prefix = os.path.join(output_prefix, "dosage", f"grud_{chr}_{region}.dosage")
     
@@ -143,23 +145,6 @@ def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_
                 if a1_freq == 0:
                     a1_freq = 0.00001
 
-        #     sample_size = len(allele_probs) // 2
-        #     values = [0.0] * sample_size
-        #     for i in range(sample_size):
-        #         h0 = allele_probs[2 * i]
-        #         h1 = allele_probs[2 * i + 1]
-        #         # print(h0.shape, h1.shape)
-        #         if ground_truth == False:
-        #             a_a = h0[0] * h1[0]
-        #             a_b_b_a = h0[0] * h1[1] + h0[1] * h1[0]
-        #             b_b = h0[1] * h1[1]
-        #             # print(a_a, a_b_b_a, b_b)
-        #             values[i] = (0*a_a + 1*a_b_b_a + 2*b_b).item()
-
-        #         else:
-        #             values[i] = (h0 + h1).item()
-        #         # print(values[i])
-        #         # break
             line = '--- %s %s %s %s %f ' \
                    % (f'chr22_{site_info.position}_{site_info.a0}_{site_info.a1}', site_info.position,
                       site_info.a0, site_info.a1, a1_freq)
@@ -192,6 +177,8 @@ def write_gen(predictions, imp_site_info_list, chr, region, output_prefix_t, gro
             fp.write(line)
             fp.write('\n')
 
+
+
 def write_output_Oxford_format(dosage, imp_site_info_list, chr, region, output_prefix, ground_truth=False):
     if ground_truth:
         output_prefix = os.path.join(output_prefix, "dosage", f"ground_truth_{chr}_{region}.dosage")
@@ -220,3 +207,43 @@ def write_output_Oxford_format(dosage, imp_site_info_list, chr, region, output_p
             line += ' '.join(map(str, values))
             fp.write(line)
             fp.write('\n')
+
+def oxford_2_vcf(path_gen, vcf_path, sample_name_path, chr):
+    command_line = f'cat $(ls -v {os.path.join(path_gen,"*")}) >> {os.path.join(path_gen, "gen.txt")}'
+    os.system(command_line)
+    header_path = './header.txt'
+    with open(header_path, 'r') as fp:
+        header = fp.read()
+
+    
+    df = pd.read_csv(os.path.join(path_gen, "gen.txt"), sep=' ', header=None)
+    chrom=chr
+    filterValue='.'
+    qual='PASS'
+    info='.'
+    formatValue='GT'
+    VCF = header
+    sample_header = '\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT'
+
+    with open(sample_name_path, 'r') as fp:
+        sample_lsit = fp.read().rstrip().split()
+
+    VCF += sample_header + '\t' + '\t'.join(sample_lsit)
+    VCF += '\n'
+
+    for index, row in df.iterrows():
+        id = row[1]
+        pos= row[2]
+        ref=row[3]
+        alt=row[4]
+        gt=row[6:].tolist()
+        info = '.'
+        tmp = []
+        for indkex in range(0, len(gt)-1, 2):
+            tmp.append(str(gt[indkex]) + "|" + str(gt[indkex+1]))
+        tmp = "\t".join(tmp)
+        content_VCF = f'{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filterValue}\t{info}\t{formatValue}\t{tmp}\n'
+        VCF += content_VCF
+
+    with gzip.open(os.path.join(vcf_path, f'gen_{chrom}.vcf.gz'), "wb") as fp:
+        fp.write(VCF.encode())
