@@ -1,6 +1,4 @@
 # A rapid and reference-free imputation method for low-cost genomic applications
-
-## Overview
 ![Screenshot](image/GRUD.svg)
 
 This repository contains a Python implementation of GRUD model, which is a genotype imputation based on deep learning algorithms. In specific, GRUD is composed of two components: *Generator* and *Discriminator*. The generator model undertakes a mission to create tokens, and the discriminator tries to verify tokens created by the generator model. In the current study, we assumed that unobserved variants are tokens in natural languages which would be predicted from a known paragraph of observed variants. In addition to, our approach resolves the reference panel privacy problem while improving both the accuracy and running time. 
@@ -20,7 +18,7 @@ pip install -r requirements.txt
 
 ## EXAMPLE USAGE
 
-### Dataset
+### 1. Dataset
 In this repository, the example dataset that is used to train and evaluate is the 1000 Genome Project (1KGP) phase 3 integrated dataset for chromosome22.
 
 Download: https://drive.google.com/drive/folders/17RIdXWoIKJsxjzfYmSmvW19kaQHxoafC?usp=sharing
@@ -31,7 +29,7 @@ Download: https://drive.google.com/drive/folders/17RIdXWoIKJsxjzfYmSmvW19kaQHxoa
   - Genotype imputation results in Oxford GEN format
   - VCF format
 
-### Imputation
+### 2. Evaluation
 For example, GRUD model imputes genotypes for small regions (1-10) separately
 
 ```script
@@ -44,7 +42,7 @@ python eval.py  --root-dir <path of LENGEND/HAP files> \
                 --best-model
 ```
 
-### Training
+### 3. Training
 We provides small regions of chromosome 22 for training 1KGP data.
 
 ```script
@@ -61,14 +59,14 @@ python train.py --root-dir <path of LENGEND/HAP files> \
                 --region 1-10
 ```
 
-## Arguments
+### 4. Arguments
 | Args | Default | Description |
 | :--- | :--- | :--- |
-| --model-type STR | None | Type of model |
+| --model-type STR | dis | Type of model |
 | --root-dir STR | None | Data folder |
 | --model-config-dir STR | None | Config model folder |
 | --gpu STR | None | GPU's Id |
-| --batch-size INT | 2 | Type of model |
+| --batch-size INT | 128 | Type of model |
 | --regions STR | 1 | Range of regions |
 | --chr STR | chr22 | Chromosome |
 | --model-dir STR | model/weights | weight model folder |
@@ -78,6 +76,7 @@ python train.py --root-dir <path of LENGEND/HAP files> \
 | --output-model-dir STR| None | Custom dataset |
 | --early-stopping BOOL | False | Early stopping |
 | --best-model BOOL| False | Get best model to test |
+| --sample STR| None | path to sample name file |
 
 ## TODO
 - [x] Training model source code
