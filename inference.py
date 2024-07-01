@@ -41,6 +41,7 @@ def main():
     print(f"[GRUD - Genotype Imputation] Input: {root_dir}")
     print(f"[GRUD - Genotype Imputation] Output: {args.result_gen_dir}")
     print(f"[GRUD - Genotype Imputation] Model config: {model_config_dir}")
+    print(f"[GRUD - Genotype Imputation] Model weights: {args.model_dir}")
     print(f"[GRUD - Genotype Imputation] Chromosome: {chromosome}; Batch size: {batch_size}, Region: {args.regions}")
     device = get_device(args.gpu)
     for region in range(int(regions[0]), int(regions[-1])+1):
