@@ -24,8 +24,7 @@ class RegionDataset(Dataset):
             self.haplotype_list, self.label_haplotype_list, self.a1_freq_list =\
                 load_custom_dataset(hap_dir, legend_dir, label_hap_dir, label_legend_dir)
 
-            print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape, self.a1_freq_list.shape)
-            
+            print("[DATASET]:",self.haplotype_list.shape, self.label_haplotype_list.shape, self.a1_freq_list.shape)   
         else:
             hap_dir = os.path.join(root_dir,f'{chromosome}_{region}.hap.gz')
             legend_dir = os.path.join(root_dir,f'{chromosome}_{region}.legend.gz')
@@ -41,7 +40,7 @@ class RegionDataset(Dataset):
             
         # self.list_input = [Sample(self.haplotype_list[i], self.haplotype_list[i+1]) for i in range(0, len(self.haplotype_list)/2, 2)]
         # self.list_label = [Sample(self.haplotype_list[i], self.haplotype_list[i+1]) for i in range(0, len(self.label_haplotype_list)/2, 2)]
-
+    
     def __len__(self):
         return len(self.haplotype_list)
     
