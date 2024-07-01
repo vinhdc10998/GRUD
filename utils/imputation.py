@@ -139,10 +139,10 @@ def save_check_point(model, optimizer, epochs, region, path):
 def get_device(gpu=False):
     if gpu:
         device = f"cuda:{gpu}" 
-        print(f"You're using GPU {torch.cuda.get_device_name(int(gpu))} to impute genotype")
+        print(f"[GRUD - Genotype Imputation] You're using GPU {torch.cuda.get_device_name(int(gpu))} to impute genotype")
     else: 
         device = 'cpu'
-        print("You're using CPU to impute genotype")
+        print("[GRUD - Genotype Imputation] You're using CPU to impute genotype")
     return device
 
 def write_dosage(dosage, imp_site_info_list, chr, region, output_prefix, ground_truth=False):

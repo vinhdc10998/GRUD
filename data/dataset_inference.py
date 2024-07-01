@@ -11,7 +11,6 @@ class RegionInferenceDataset(Dataset):
 
         self.site_info_list = load_site_info(panel_dir)
         self.haplotype_list = load_dataset_inference(hap_dir, legend_dir, self.site_info_list)
-        print("[DATASET]:",self.haplotype_list.shape)
 
     def __len__(self):
         return len(self.haplotype_list)
