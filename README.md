@@ -29,10 +29,12 @@ Download: https://drive.google.com/drive/folders/17RIdXWoIKJsxjzfYmSmvW19kaQHxoa
   - Genotype imputation results in Oxford GEN format
   - VCF format
 
-### 2. Evaluation
-For example, GRUD model imputes genotypes for small regions (1-10) separately
+### 2. Evaluation/ Inference
+For example, GRUD model imputes genotypes for small regions (1-10) separately. 
 
-```script
+In evaluation, the root directory should contain ground truth files while inference doesn't need this.
+
+```bash
 python eval.py  --root-dir <path of LENGEND/HAP files> \
                 --model-config-dir <path of config model files> \
                 --model-dir <path of weighted model files> \
@@ -45,7 +47,7 @@ python eval.py  --root-dir <path of LENGEND/HAP files> \
 ### 3. Training
 We provides small regions of chromosome 22 for training 1KGP data.
 
-```script
+```bash
 python train.py --root-dir <path of LENGEND/HAP files> \
                 --model-type dis \
                 --model-config-dir <path of config model files> \
@@ -59,7 +61,7 @@ python train.py --root-dir <path of LENGEND/HAP files> \
                 --region 1-10
 ```
 
-### 4. Arguments
+### 5. Arguments
 | Args | Default | Description |
 | :--- | :--- | :--- |
 | --model-type STR | dis | Type of model |
@@ -79,9 +81,9 @@ python train.py --root-dir <path of LENGEND/HAP files> \
 | --sample STR| None | path to sample name file |
 
 ## TODO
-- [x] Training model source code
+- [x] Training model source code 
 - [x] Evaluation model source code
-- [ ] Inference model source code
+- [x] Inference model source code (updated on 07/01/2024)
 
 ## CITATION
 If you find GRUD or any of the scripts in this repository useful for your research, please cite:
