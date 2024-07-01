@@ -92,6 +92,30 @@ def train(dataloader, model, device, loss, optimizer, scheduler):
 
     return train_loss, _r2_score
 
+def inference(dataloader, model, device):
+    '''
+        Evaluate model with R square score
+    '''
+    model.eval()  
+    with torch.no_grad():
+        predictions = []
+        dosage = []
+        for X in dataloader:
+            X = X.to(device)
+        
+            _, prediction, _ = model(X)
+            y_pred = torch.argmax(prediction, dim=-1).T
+
+            dosage.append(prediction)
+            predictions.append(y_pred)
+    
+    predictions = torch.cat(predictions, dim=0)
+    dosage = torch.cat(dosage, dim=1)
+    return predictions, dosage
+
+
+
+
 def save_model(model, region, path, type_model="dis", best=False):
     if not os.path.exists(path):
         os.mkdir(path)

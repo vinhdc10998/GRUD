@@ -275,3 +275,82 @@ def load_site_info_custom_data(legend_file):
                 items[marker_flag_col] == '0')
             site_info_list.append(site_info)
     return site_info_list
+
+
+def load_dataset_inference(hap_file, legend_file, site_info_list):
+    site_info_dict = {}
+    marker_site_count = 0
+    label_site_count = 0
+    label_info_dict = {}
+
+    for site_info in site_info_list:
+        if site_info.array_marker_flag:
+            site_info.marker_id = marker_site_count
+            key = '{:s} {:s} {:s}'.format(
+                site_info.position, site_info.a0, site_info.a1)
+            site_info_dict[key] = site_info
+            marker_site_count += 1
+        else:
+            site_info.marker_id = label_site_count
+            key = '{:s} {:s} {:s}'.format(
+                site_info.position, site_info.a0, site_info.a1)
+            label_info_dict[key] = site_info
+            label_site_count += 1
+
+    load_info_list = []
+    key_set = set()
+    with reading(legend_file) as fp:
+        items = fp.readline().rstrip().split()
+        a0_col = get_item_col(items, 'a0', legend_file)
+        a1_col = get_item_col(items, 'a1', legend_file)
+        position_col = get_item_col(items, 'position', legend_file)
+        for line in fp:
+            items = line.rstrip().split()
+            position = items[position_col]
+            a0 = items[a0_col]
+            a1 = items[a1_col]
+            swap_flag = False
+            key = '{:s} {:s} {:s}'.format(position, a0, a1)
+            if key not in site_info_dict:
+                key = '{:s} {:s} {:s}'.format(position, a1, a0)
+                if key not in site_info_dict:
+                    load_info_list.append(None)
+                    continue
+                swap_flag = True
+            key_set.add(key)
+            site_info = site_info_dict[key]
+            marker_id = site_info.marker_id
+            a1_freq = site_info.a1_freq
+            load_info_list.append([marker_id, swap_flag, a1_freq])
+    sample_size = 0
+    with reading(hap_file) as fp:
+        items = fp.readline().rstrip().split()
+        sample_size = len(items)
+    haplotype_list = [[None] * marker_site_count for _ in range(sample_size)]
+    with reading(hap_file) as fp:
+        for i, line in enumerate(fp):
+            load_info = load_info_list[i]
+            if load_info is None:
+                continue
+            items = line.rstrip().split()
+            marker_id, swap_flag, a1_freq = load_info
+            for item, haplotype in zip(items, haplotype_list):
+                allele = None
+                if item != 'NA':
+                    allele = int(item)
+                    if swap_flag:
+                        allele = 1 - allele
+                haplotype[marker_id] = one_hot(allele, a1_freq)
+    for key in site_info_dict.keys():
+        if key not in key_set:
+            site_info = site_info_dict[key]
+            marker_id = site_info.marker_id
+            one_hot_value = one_hot(None, site_info.a1_freq)
+            for haplotype in haplotype_list:
+                haplotype[marker_id] = one_hot_value
+    positions = []
+    for key in label_info_dict.keys():
+        positions.append(label_info_dict[key].position)
+    
+    haplotype_list = torch.tensor(haplotype_list)
+    return haplotype_list
