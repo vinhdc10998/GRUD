@@ -17,10 +17,8 @@ def run(dataloader, imp_site_info_list, model_config, args, region, device):
     result_gen_dir = args.result_gen_dir
     chromosome = args.chromosome
     model_config['device'] = device
-
     #Init Model
     model = GRUD(model_config, device).to(device)
-
     if args.best_model:
         loaded_model = torch.load(os.path.join(model_dir, f'Best_grud_region_{region}.pt'),map_location=torch.device(device))
     else:
@@ -43,9 +41,7 @@ def main():
     print(f"[GRUD - Genotype Imputation] Input: {root_dir}")
     print(f"[GRUD - Genotype Imputation] Output: {args.result_gen_dir}")
     print(f"[GRUD - Genotype Imputation] Model config: {model_config_dir}")
-    print(f"[GRUD - Genotype Imputation] Chromosome: {chromosome}; Batch size: {batch_size}, Region: {range(int(regions[0]), int(regions[-1])+1)}")
-
-
+    print(f"[GRUD - Genotype Imputation] Chromosome: {chromosome}; Batch size: {batch_size}, Region: {args.regions}")
     device = get_device(args.gpu)
     for region in range(int(regions[0]), int(regions[-1])+1):
         with open(os.path.join(model_config_dir, f'region_{region}_config.json'), "r") as json_config:
@@ -67,7 +63,7 @@ def main():
             region,
             device
         )
-    oxford_2_vcf(os.path.join(args.result_gen_dir, 'gen'), args.result_gen_dir, args.sample, chromosome)
+    oxford_2_vcf(os.path.join(args.result_gen_dir, 'gen'), args.result_gen_dir, args.sample, chromosome)   
     print(f"[GRUD - Genotype Imputation] Output: {os.path.join(args.result_gen_dir, f'gen_{chromosome}.vcf.gz')}")
 
 if __name__ == "__main__":
