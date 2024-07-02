@@ -79,6 +79,7 @@ python train.py --root-dir <path of LEGEND/HAP files> \
 | --early-stopping BOOL | False | Early stopping |
 | --best-model BOOL| False | Get best model to test |
 | --sample STR| None | path to sample name file |
+| --thread INT| 1 | parallel imputation in inference |
 
 ## TODO
 - [x] Training model source code 
