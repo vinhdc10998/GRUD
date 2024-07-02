@@ -35,7 +35,7 @@ For example, GRUD model imputes genotypes for small regions (1-10) separately.
 In evaluation, the root directory should contain ground truth files while inference doesn't need this.
 
 ```bash
-python eval.py  --root-dir <path of LENGEND/HAP files> \
+python eval.py  --root-dir <path of LEGEND/HAP files> \
                 --model-config-dir <path of config model files> \
                 --model-dir <path of weighted model files> \
                 --result-gen-dir <path of output files> \
@@ -48,7 +48,7 @@ python eval.py  --root-dir <path of LENGEND/HAP files> \
 We provides small regions of chromosome 22 for training 1KGP data.
 
 ```bash
-python train.py --root-dir <path of LENGEND/HAP files> \
+python train.py --root-dir <path of LEGEND/HAP files> \
                 --model-type dis \
                 --model-config-dir <path of config model files> \
                 --batch-size 128 \
@@ -84,6 +84,7 @@ python train.py --root-dir <path of LENGEND/HAP files> \
 - [x] Training model source code 
 - [x] Evaluation model source code
 - [x] Inference model source code (updated on 07/01/2024)
+- [x] Parallel in inference (updated on 07/02/2024)
 
 ## CITATION
 If you find GRUD or any of the scripts in this repository useful for your research, please cite:
