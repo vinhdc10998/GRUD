@@ -4,6 +4,7 @@ import pandas as pd
 import gzip
 import subprocess
 import shutil
+import datetime
 
 from sklearn.metrics import matthews_corrcoef
 from data.load_data import mkdir
@@ -228,6 +229,25 @@ def write_output_Oxford_format(dosage, imp_site_info_list, chr, region, output_p
             fp.write(line)
             fp.write('\n')
 
+def write_header(chromosome, sample_list):
+    date = datetime.date.today()
+    source = 'GRUD'
+
+    header_lines = [
+        '##fileformat=VCFv4.2',
+        '##FILTER=<ID=PASS,Description="All filters passed">',
+        '##filedate={:d}.{:d}.{:d}'.format(date.year, date.month, date.day),
+        '##source=' + source,
+        '##contig=<ID={:s}>'.format(chromosome),
+        '##INFO=<ID=IMP,Number=0,Type=Flag,Description="Imputed marker">',
+        '##FORMAT=<ID=GT,Number=1,Type=String,Description="Phased genotypes">',
+    ]
+    header_items = [
+        'CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT',
+    ] + sample_list
+    header_lines.append('#' + '\t'.join(header_items))
+    return "\n".join(header_lines)
+
 def oxford_2_vcf(path_gen, vcf_path, sample_name_path, chr):
     output_path = os.path.join(path_gen, "gen.txt")
     if os.path.exists(output_path):
@@ -235,24 +255,16 @@ def oxford_2_vcf(path_gen, vcf_path, sample_name_path, chr):
     command_line = f'cat $(ls -v {os.path.join(path_gen,"*")}) >> {output_path}'
     os.system(command_line)
     
-    header_path = './header.txt'
-    with open(header_path, 'r') as fp:
-        header = fp.read()
-
     df = pd.read_csv(output_path, sep=' ', header=None)
     chrom=chr
     filterValue='PASS'
     qual='.'
-    info='IMPUTED'
+    info='IMP'
     formatValue='GT'
-    VCF = header
-    sample_header = '\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT'
 
     with open(sample_name_path, 'r') as fp:
-        sample_lsit = fp.read().rstrip().split()
-
-    VCF += sample_header + '\t' + '\t'.join(sample_lsit)
-    VCF += '\n'
+        sample_list = fp.read().rstrip().split()
+    VCF = write_header(chr, sample_list) + "\n"
 
     for index, row in df.iterrows():
         id = row[1]
