@@ -43,6 +43,8 @@ def get_argument():
                         dest='dataset', help='run custom dataset ( default: preprocessed data of paper)')
     parser.add_argument('--sample', type=str, default='', required=False,
                     dest='sample', help='file sample name')
+    parser.add_argument('--thread', type=int, default=1, required=False,
+                    dest='thread', help='parallel imputation in inference')
 
     args = parser.parse_args()
     return args
