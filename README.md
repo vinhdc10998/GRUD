@@ -85,6 +85,7 @@ python train.py --root-dir <path of LEGEND/HAP files> \
 - [x] Evaluation model source code
 - [x] Inference model source code (updated on 07/01/2024)
 - [x] Parallel in inference (updated on 07/02/2024)
+- [] Preprocess data source code
 
 ## CITATION
 If you find GRUD or any of the scripts in this repository useful for your research, please cite:
