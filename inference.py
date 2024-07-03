@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import datetime
+import gc
 import multiprocessing
 from itertools import repeat
 from model.grud_model import GRUD
@@ -55,6 +56,9 @@ def compute(region, args, device):
         region,
         device
     )
+    #Clear GPU memory
+    gc.collect()
+    torch.cuda.empty_cache()
 
 def main():
     args = get_argument()
